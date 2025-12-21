@@ -77,15 +77,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	slog.Info("Adding tools and resources to the server.")
-	if err := tools.Add(ctx, s, tools.Dependencies{
+	slog.Info("Adding tools to the server.")
+	if err := tools.Add(s, tools.Dependencies{
 		Service:          resultsSvc,
 		DefaultNamespace: namespace,
 	}); err != nil {
 		slog.Error(fmt.Sprintf("failed to add tools: %v", err))
 		os.Exit(1)
 	}
-	// resources.Add(ctx, s)
 
 	slog.Info("Starting the server.")
 

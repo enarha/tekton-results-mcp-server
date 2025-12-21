@@ -1,7 +1,6 @@
 package tools
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -18,7 +17,7 @@ type Dependencies struct {
 }
 
 // Add registers all Tekton Results tools with the MCP server.
-func Add(_ context.Context, s *server.MCPServer, deps Dependencies) error {
+func Add(s *server.MCPServer, deps Dependencies) error {
 	if deps.Service == nil {
 		return fmt.Errorf("tekton results service dependency is required")
 	}
