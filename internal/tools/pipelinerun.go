@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -221,11 +222,70 @@ func newPipelineRunLogsTool(deps Dependencies) server.ServerTool {
 			return mcp.NewToolResultError("logs are only available after the PipelineRun has completed"), nil
 		}
 
-		logs, err := deps.Service.FetchLogs(ctx, detail.RecordName)
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+		// Fetch all TaskRuns for this PipelineRun using the UID (result ID)
+		// This is more reliable than using the name, as names can be reused over time
+		taskRunOpts := tektonresults.ListOptions{
+			Namespace:     ns,
+			LabelSelector: fmt.Sprintf("tekton.dev/pipelineRunUID=%s", detail.Summary.UID),
+			Limit:         200, // Maximum allowed
 		}
-		return mcp.NewToolResultText(logs), nil
+
+		taskRuns, err := deps.Service.ListTaskRuns(ctx, taskRunOpts)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to list TaskRuns: %v", err)), nil
+		}
+
+		if len(taskRuns) == 0 {
+			return mcp.NewToolResultText("No TaskRuns found for this PipelineRun"), nil
+		}
+
+		// Sort TaskRuns by completion time, then by start time
+		sort.Slice(taskRuns, func(i, j int) bool {
+			// If both have completion times, sort by completion time
+			if taskRuns[i].CompletionTime != nil && taskRuns[j].CompletionTime != nil {
+				if !taskRuns[i].CompletionTime.Equal(taskRuns[j].CompletionTime) {
+					return taskRuns[i].CompletionTime.Before(taskRuns[j].CompletionTime)
+				}
+			}
+			// Fall back to start time
+			if taskRuns[i].StartTime != nil && taskRuns[j].StartTime != nil {
+				return taskRuns[i].StartTime.Before(taskRuns[j].StartTime)
+			}
+			return false
+		})
+
+		// Fetch logs for each TaskRun
+		var logsBuilder strings.Builder
+		for i, tr := range taskRuns {
+			if i > 0 {
+				logsBuilder.WriteString("\n\n")
+			}
+			logsBuilder.WriteString("========================================\n")
+			logsBuilder.WriteString(fmt.Sprintf("TaskRun: %s\n", tr.Name))
+			logsBuilder.WriteString(fmt.Sprintf("Status: %s", tr.Reason))
+			if tr.StartTime != nil {
+				logsBuilder.WriteString(fmt.Sprintf(" | Started: %s", tr.StartTime.Format("2006-01-02T15:04:05Z")))
+			}
+			if tr.CompletionTime != nil {
+				logsBuilder.WriteString(fmt.Sprintf(" | Completed: %s", tr.CompletionTime.Format("2006-01-02T15:04:05Z")))
+			}
+			logsBuilder.WriteString("\n========================================\n")
+
+			taskLogs, err := deps.Service.FetchLogs(ctx, tr.RecordName)
+			if err != nil {
+				logsBuilder.WriteString(fmt.Sprintf("Error fetching logs: %v\n", err))
+			} else if taskLogs == "" {
+				logsBuilder.WriteString("(no logs available)\n")
+			} else {
+				logsBuilder.WriteString(taskLogs)
+				// Ensure logs end with newline
+				if !strings.HasSuffix(taskLogs, "\n") {
+					logsBuilder.WriteString("\n")
+				}
+			}
+		}
+
+		return mcp.NewToolResultText(logsBuilder.String()), nil
 	})
 
 	return server.ServerTool{
