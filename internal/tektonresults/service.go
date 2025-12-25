@@ -86,11 +86,15 @@ type ListOptions struct {
 	Limit         int
 }
 
+// RunSelector specifies filters for finding a single PipelineRun or TaskRun.
 type RunSelector struct {
-	Namespace     string
-	LabelSelector string
-	Prefix        string
-	Name          string
+	Namespace     string // Kubernetes namespace; use "-" for all namespaces
+	LabelSelector string // Comma-separated key=value label filters
+	Prefix        string // Name prefix filter
+	Name          string // Exact name match (not unique in Results history)
+	SelectLast    bool   // If true, automatically select the most recent match when multiple runs match the filters.
+	// Defaults to true. When false, returns an error if multiple matches are found.
+	// Useful because run names are not unique in Tekton Results history.
 }
 
 type RunSummary struct {
@@ -229,6 +233,7 @@ func (s *Service) getRun(ctx context.Context, kind resourceKind, selector RunSel
 	req := listRecordsRequest{
 		Parent:   parent,
 		Filter:   filter,
+		OrderBy:  "create_time desc",
 		PageSize: describePageSize,
 		Fields:   nameUIDAndDataField,
 	}
@@ -276,6 +281,10 @@ func (s *Service) getRun(ctx context.Context, kind resourceKind, selector RunSel
 		return nil, fmt.Errorf("no %s found that matches the provided filters", kind)
 	}
 	if len(matches) > 1 {
+		// If SelectLast is enabled, return the first match (most recent due to create_time desc ordering)
+		if selector.SelectLast {
+			return &matches[0], nil
+		}
 		var names []string
 		for _, match := range matches {
 			names = append(names, fmt.Sprintf("%s/%s", match.Summary.Namespace, match.Summary.Name))
