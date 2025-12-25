@@ -106,11 +106,25 @@ func newTaskRunDescribeTool(deps Dependencies) server.ServerTool {
 			mcp.Description("Return format: 'yaml' (default) or 'json'."),
 			mcp.DefaultString("yaml"),
 		),
+		mcp.WithBoolean("selectLast",
+			mcp.Description("If true, automatically select the last (most recent) match when multiple TaskRuns match the filters. Defaults to true."),
+			mcp.DefaultBool(true),
+		),
 	)
 
-	handler := mcp.NewTypedToolHandler(func(ctx context.Context, _ mcp.CallToolRequest, args describeParams) (*mcp.CallToolResult, error) {
+	handler := mcp.NewTypedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args describeParams) (*mcp.CallToolResult, error) {
 		if args.Name == "" && args.Prefix == "" && strings.TrimSpace(args.LabelSelector) == "" {
 			return mcp.NewToolResultError("provide at least one of name, prefix, or labelSelector to identify a TaskRun"), nil
+		}
+
+		// Default selectLast to true if not explicitly provided
+		selectLast := true
+		if params, ok := req.Params.Arguments.(map[string]interface{}); ok {
+			if val, exists := params["selectLast"]; exists {
+				if boolVal, ok := val.(bool); ok {
+					selectLast = boolVal
+				}
+			}
 		}
 
 		ns := normalizeNamespace(args.Namespace, namespaceDefault)
@@ -119,6 +133,7 @@ func newTaskRunDescribeTool(deps Dependencies) server.ServerTool {
 			LabelSelector: args.LabelSelector,
 			Prefix:        args.Prefix,
 			Name:          args.Name,
+			SelectLast:    selectLast,
 		}
 
 		detail, err := deps.Service.GetTaskRun(ctx, selector)
@@ -170,11 +185,25 @@ func newTaskRunLogsTool(deps Dependencies) server.ServerTool {
 			mcp.Description("Optional TaskRun name prefix when multiple runs share similar names."),
 			mcp.DefaultString(""),
 		),
+		mcp.WithBoolean("selectLast",
+			mcp.Description("If true, automatically select the last (most recent) match when multiple TaskRuns match the filters. Defaults to true."),
+			mcp.DefaultBool(true),
+		),
 	)
 
-	handler := mcp.NewTypedToolHandler(func(ctx context.Context, _ mcp.CallToolRequest, args logsParams) (*mcp.CallToolResult, error) {
+	handler := mcp.NewTypedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args logsParams) (*mcp.CallToolResult, error) {
 		if args.Name == "" && args.Prefix == "" && strings.TrimSpace(args.LabelSelector) == "" {
 			return mcp.NewToolResultError("provide at least one of name, prefix, or labelSelector to target a TaskRun"), nil
+		}
+
+		// Default selectLast to true if not explicitly provided
+		selectLast := true
+		if params, ok := req.Params.Arguments.(map[string]interface{}); ok {
+			if val, exists := params["selectLast"]; exists {
+				if boolVal, ok := val.(bool); ok {
+					selectLast = boolVal
+				}
+			}
 		}
 
 		ns := normalizeNamespace(args.Namespace, namespaceDefault)
@@ -183,6 +212,7 @@ func newTaskRunLogsTool(deps Dependencies) server.ServerTool {
 			LabelSelector: args.LabelSelector,
 			Prefix:        args.Prefix,
 			Name:          args.Name,
+			SelectLast:    selectLast,
 		}
 
 		detail, err := deps.Service.GetTaskRun(ctx, selector)
