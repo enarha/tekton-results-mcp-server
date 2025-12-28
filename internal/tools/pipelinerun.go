@@ -30,6 +30,7 @@ type getParams struct {
 	LabelSelector string `json:"labelSelector"`
 	Prefix        string `json:"prefix"`
 	Name          string `json:"name"`
+	UID           string `json:"uid"`
 	Output        string `json:"output"`
 	SelectLast    bool   `json:"selectLast"`
 }
@@ -39,6 +40,7 @@ type logsParams struct {
 	LabelSelector string `json:"labelSelector"`
 	Prefix        string `json:"prefix"`
 	Name          string `json:"name"`
+	UID           string `json:"uid"`
 	SelectLast    bool   `json:"selectLast"`
 }
 
@@ -132,6 +134,10 @@ func newPipelineRunGetTool(deps Dependencies) server.ServerTool {
 			mcp.Description("Optional PipelineRun name prefix to disambiguate."),
 			mcp.DefaultString(""),
 		),
+		mcp.WithString("uid",
+			mcp.Description("Exact PipelineRun UID (unique identifier in Tekton Results database). This is the most efficient way to find a specific run."),
+			mcp.DefaultString(""),
+		),
 		mcp.WithString("output",
 			mcp.Description("Return format: 'yaml' (default) or 'json'."),
 			mcp.DefaultString("yaml"),
@@ -143,8 +149,8 @@ func newPipelineRunGetTool(deps Dependencies) server.ServerTool {
 	)
 
 	handler := mcp.NewTypedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args getParams) (*mcp.CallToolResult, error) {
-		if args.Name == "" && args.Prefix == "" && strings.TrimSpace(args.LabelSelector) == "" {
-			return mcp.NewToolResultError("provide at least one of name, prefix, or labelSelector to identify a PipelineRun"), nil
+		if args.Name == "" && args.Prefix == "" && args.UID == "" && strings.TrimSpace(args.LabelSelector) == "" {
+			return mcp.NewToolResultError("provide at least one of name, prefix, uid, or labelSelector to identify a PipelineRun"), nil
 		}
 
 		// Default selectLast to true if not explicitly provided
@@ -163,6 +169,7 @@ func newPipelineRunGetTool(deps Dependencies) server.ServerTool {
 			LabelSelector: args.LabelSelector,
 			Prefix:        args.Prefix,
 			Name:          args.Name,
+			UID:           args.UID,
 			SelectLast:    selectLast,
 		}
 
@@ -215,6 +222,10 @@ func newPipelineRunLogsTool(deps Dependencies) server.ServerTool {
 			mcp.Description("Optional PipelineRun name prefix when multiple runs share similar names."),
 			mcp.DefaultString(""),
 		),
+		mcp.WithString("uid",
+			mcp.Description("Exact PipelineRun UID (unique identifier in Tekton Results database). This is the most efficient way to find a specific run."),
+			mcp.DefaultString(""),
+		),
 		mcp.WithBoolean("selectLast",
 			mcp.Description("If true, automatically select the last (most recent) match when multiple PipelineRuns match the filters. Defaults to true."),
 			mcp.DefaultBool(true),
@@ -223,7 +234,7 @@ func newPipelineRunLogsTool(deps Dependencies) server.ServerTool {
 
 	handler := mcp.NewTypedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args logsParams) (*mcp.CallToolResult, error) {
 		if args.Name == "" && args.Prefix == "" && strings.TrimSpace(args.LabelSelector) == "" {
-			return mcp.NewToolResultError("provide at least one of name, prefix, or labelSelector to target a PipelineRun"), nil
+			return mcp.NewToolResultError("provide at least one of name, prefix, uid, or labelSelector to target a PipelineRun"), nil
 		}
 
 		// Default selectLast to true if not explicitly provided
@@ -242,6 +253,7 @@ func newPipelineRunLogsTool(deps Dependencies) server.ServerTool {
 			LabelSelector: args.LabelSelector,
 			Prefix:        args.Prefix,
 			Name:          args.Name,
+			UID:           args.UID,
 			SelectLast:    selectLast,
 		}
 

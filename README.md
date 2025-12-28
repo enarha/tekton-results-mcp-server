@@ -25,6 +25,7 @@ This project provides a [Model Context Protocol (MCP)](https://modelcontextproto
 - `namespace`: Namespace of the PipelineRun (string, optional, default: current kubeconfig namespace; use `-` for all namespaces)
 - `labelSelector`: Label selector to filter PipelineRuns (string, optional, comma-separated `key=value` pairs)
 - `prefix`: Name prefix to filter PipelineRuns (string, optional)
+- `uid`: Exact PipelineRun UID (string, optional). Unique identifier in Tekton Results database. This is the most efficient way to find a specific run.
 - `output`: Return format - json or yaml (string, optional, default: "yaml")
 - `selectLast`: If true, automatically select the most recent match when multiple runs match the filters (boolean, optional, default: true). When false, returns an error if multiple matches are found. Useful because run names are not unique in Tekton Results history.
 
@@ -33,6 +34,7 @@ This project provides a [Model Context Protocol (MCP)](https://modelcontextproto
 - `namespace`: Namespace of the TaskRun (string, optional, default: current kubeconfig namespace; use `-` for all namespaces)
 - `labelSelector`: Label selector to filter TaskRuns (string, optional, comma-separated `key=value` pairs)
 - `prefix`: Name prefix to filter TaskRuns (string, optional)
+- `uid`: Exact TaskRun UID (string, optional). Unique identifier in Tekton Results database. This is the most efficient way to find a specific run.
 - `output`: Return format - json or yaml (string, optional, default: "yaml")
 - `selectLast`: If true, automatically select the most recent match when multiple runs match the filters (boolean, optional, default: true). When false, returns an error if multiple matches are found. Useful because run names are not unique in Tekton Results history.
 
@@ -43,6 +45,7 @@ This project provides a [Model Context Protocol (MCP)](https://modelcontextproto
 - `namespace`: Namespace where the PipelineRun is located (string, optional, default: current kubeconfig namespace; use `-` for all namespaces)
 - `labelSelector`: Label selector to filter PipelineRuns (string, optional, comma-separated `key=value` pairs)
 - `prefix`: Name prefix to filter PipelineRuns (string, optional)
+- `uid`: Exact PipelineRun UID (string, optional). Unique identifier in Tekton Results database. This is the most efficient way to find a specific run.
 - `selectLast`: If true, automatically select the most recent match when multiple runs match the filters (boolean, optional, default: true). When false, returns an error if multiple matches are found. Useful because run names are not unique in Tekton Results history.
 
 **Note:** This tool fetches logs from all TaskRuns associated with the PipelineRun, sorted by completion time in execution order. Logs are only available after the PipelineRun has completed.
@@ -52,6 +55,7 @@ This project provides a [Model Context Protocol (MCP)](https://modelcontextproto
 - `namespace`: Namespace where the TaskRun is located (string, optional, default: current kubeconfig namespace; use `-` for all namespaces)
 - `labelSelector`: Label selector to filter TaskRuns (string, optional, comma-separated `key=value` pairs)
 - `prefix`: Name prefix to filter TaskRuns (string, optional)
+- `uid`: Exact TaskRun UID (string, optional). Unique identifier in Tekton Results database. This is the most efficient way to find a specific run.
 - `selectLast`: If true, automatically select the most recent match when multiple runs match the filters (boolean, optional, default: true). When false, returns an error if multiple matches are found. Useful because run names are not unique in Tekton Results history.
 
 **Note:** Logs are only available after the TaskRun has completed and could even take a bit longer depending on logger confuguration (buffering, etc.).
