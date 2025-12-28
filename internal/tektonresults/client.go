@@ -90,6 +90,24 @@ type listRecordsResponse struct {
 	NextPageToken string   `json:"nextPageToken"`
 }
 
+type listResultsRequest struct {
+	Parent    string
+	Filter    string
+	OrderBy   string
+	PageSize  int32
+	PageToken string
+}
+
+type result struct {
+	Name string `json:"name"`
+	UID  string `json:"uid"`
+}
+
+type listResultsResponse struct {
+	Results      []result `json:"results"`
+	NextPageToken string  `json:"nextPageToken"`
+}
+
 type record struct {
 	Name string `json:"name"`
 	Uid  string `json:"uid"`
@@ -133,6 +151,58 @@ func (r *record) GetValue() (json.RawMessage, error) {
 	}
 	r.Data.valueDecoded = json.RawMessage(decoded)
 	return r.Data.valueDecoded, nil
+}
+
+func (c *restClient) listResults(ctx context.Context, req listResultsRequest) (*listResultsResponse, error) {
+	if req.Parent == "" {
+		return nil, fmt.Errorf("parent is required")
+	}
+
+	params := url.Values{}
+	if req.Filter != "" {
+		params.Set("filter", req.Filter)
+	}
+	if req.OrderBy != "" {
+		params.Set("order_by", req.OrderBy)
+	}
+	if req.PageSize > 0 {
+		params.Set("page_size", fmt.Sprintf("%d", req.PageSize))
+	}
+	if req.PageToken != "" {
+		params.Set("page_token", req.PageToken)
+	}
+
+	relative := fmt.Sprintf("parents/%s/results", strings.TrimPrefix(req.Parent, "/"))
+	body, err := c.do(ctx, http.MethodGet, relative, params)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp listResultsResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("decode list results response: %w", err)
+	}
+	return &resp, nil
+}
+
+func (c *restClient) getRecord(ctx context.Context, recordName string) (*record, error) {
+	if recordName == "" {
+		return nil, fmt.Errorf("record name is required")
+	}
+
+	// Record name format: "namespace/results/result-uid/records/record-uid"
+	// REST API requires "parents/" prefix
+	relative := fmt.Sprintf("parents/%s", strings.TrimPrefix(recordName, "/"))
+	body, err := c.do(ctx, http.MethodGet, relative, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var rec record
+	if err := json.Unmarshal(body, &rec); err != nil {
+		return nil, fmt.Errorf("decode record response: %w", err)
+	}
+	return &rec, nil
 }
 
 func (c *restClient) listRecords(ctx context.Context, req listRecordsRequest) (*listRecordsResponse, error) {

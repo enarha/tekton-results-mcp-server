@@ -45,7 +45,7 @@ func matchesLabels(actual map[string]string, expected map[string]string) bool {
 	return true
 }
 
-func buildFilterExpression(kind resourceKind, labels map[string]string, exactName string) string {
+func buildFilterExpression(kind resourceKind, labels map[string]string, exactName string, uid string) string {
 	var parts []string
 	if types, ok := resourceTypeFilters[kind]; ok && len(types) > 0 {
 		var clauses []string
@@ -54,6 +54,9 @@ func buildFilterExpression(kind resourceKind, labels map[string]string, exactNam
 		}
 		parts = append(parts, fmt.Sprintf("(%s)", strings.Join(clauses, " || ")))
 	}
+	// Note: UID filtering is not supported in CEL filter expressions for Records.
+	// UID filtering is handled in-memory after fetching records.
+	// The uid parameter is kept for API consistency but not used in the CEL expression.
 	for key, value := range labels {
 		parts = append(parts, fmt.Sprintf(`data.metadata.labels["%s"]=="%s"`, escapeCELString(key), escapeCELString(value)))
 	}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,6 +93,7 @@ type RunSelector struct {
 	LabelSelector string // Comma-separated key=value label filters
 	Prefix        string // Name prefix filter
 	Name          string // Exact name match (not unique in Results history)
+	UID           string // Exact UID match (unique identifier in Tekton Results database)
 	SelectLast    bool   // If true, automatically select the most recent match when multiple runs match the filters.
 	// Defaults to true. When false, returns an error if multiple matches are found.
 	// Useful because run names are not unique in Tekton Results history.
@@ -163,7 +165,7 @@ func (s *Service) listRuns(ctx context.Context, kind resourceKind, opts ListOpti
 		return nil, err
 	}
 
-	filter := buildFilterExpression(kind, labelFilters, "")
+	filter := buildFilterExpression(kind, labelFilters, "", "")
 	parent := parentForNamespace(opts.Namespace)
 
 	limit := opts.Limit
@@ -227,15 +229,60 @@ func (s *Service) getRun(ctx context.Context, kind resourceKind, selector RunSel
 		return nil, err
 	}
 
-	filter := buildFilterExpression(kind, labelFilters, selector.Name)
-	parent := parentForNamespace(selector.Namespace)
+	// Optimized UID lookup: try direct GetRecord first
+	if selector.UID != "" {
+		ns := selector.Namespace
+		if ns == "" {
+			ns = "default"
+		}
+		recordName := fmt.Sprintf("%s/results/%s/records/%s", ns, selector.UID, selector.UID)
+		rec, err := s.client.getRecord(ctx, recordName)
+		if err == nil {
+			// Found directly, decode and return
+			run, err := decodeRun(*rec)
+			if err != nil {
+				return nil, fmt.Errorf("decode run from direct get: %w", err)
+			}
+			rawValue, err := rec.GetValue()
+			if err != nil {
+				return nil, fmt.Errorf("get value for detail from direct get: %w", err)
+			}
+			return &RunDetail{
+				Summary:    summarizeRun(run, *rec),
+				Raw:        rawValue,
+				RecordName: rec.Name,
+			}, nil
+		}
 
+		// If direct GetRecord failed for a TaskRun, it might be part of a PipelineRun.
+		// Fallback to searching across all Records in the namespace.
+		if kind == resourceKindTaskRun && strings.Contains(err.Error(), `"code":5`) {
+			slog.Info("Direct GetRecord failed for TaskRun, falling back to namespace-wide search", "uid", selector.UID, "error", err)
+			// Fall through to the standard query path below, which will filter by UID in memory
+		} else {
+			// For PipelineRuns, or other errors, direct GetRecord failure means it doesn't exist or other issue
+			return nil, fmt.Errorf("get record by UID: %w", err)
+		}
+	}
+
+	// Non-UID query path: use standard filtering
+	resultParent := parentForNamespace(selector.Namespace)
+	filter := buildFilterExpression(kind, labelFilters, selector.Name, "")
 	req := listRecordsRequest{
-		Parent:   parent,
+		Parent:   resultParent,
 		Filter:   filter,
 		OrderBy:  "create_time desc",
 		PageSize: describePageSize,
 		Fields:   nameUIDAndDataField,
+	}
+	return s.queryRecords(ctx, req, selector)
+}
+
+// queryRecords handles the common logic for querying and filtering records
+func (s *Service) queryRecords(ctx context.Context, req listRecordsRequest, selector RunSelector) (*RunDetail, error) {
+	labelFilters, err := parseLabelSelector(selector.LabelSelector)
+	if err != nil {
+		return nil, err
 	}
 
 	var matches []RunDetail
@@ -248,6 +295,13 @@ func (s *Service) getRun(ctx context.Context, kind resourceKind, selector RunSel
 			run, err := decodeRun(rec)
 			if err != nil {
 				return nil, err
+			}
+			// Apply in-memory filters
+			if selector.UID != "" {
+				recordUID := chooseString(run.Metadata.UID, rec.Uid)
+				if recordUID != selector.UID {
+					continue
+				}
 			}
 			if !matchesLabels(run.Metadata.Labels, labelFilters) {
 				continue
@@ -278,7 +332,7 @@ func (s *Service) getRun(ctx context.Context, kind resourceKind, selector RunSel
 	}
 
 	if len(matches) == 0 {
-		return nil, fmt.Errorf("no %s found that matches the provided filters", kind)
+		return nil, fmt.Errorf("no run found that matches the provided filters")
 	}
 	if len(matches) > 1 {
 		// If SelectLast is enabled, return the first match (most recent due to create_time desc ordering)
@@ -289,7 +343,7 @@ func (s *Service) getRun(ctx context.Context, kind resourceKind, selector RunSel
 		for _, match := range matches {
 			names = append(names, fmt.Sprintf("%s/%s", match.Summary.Namespace, match.Summary.Name))
 		}
-		return nil, fmt.Errorf("multiple %s instances match the filters (%s). Please refine the filters with an exact name or prefix.", kind, strings.Join(names, ", "))
+		return nil, fmt.Errorf("multiple run instances match the filters (%s). Please refine the filters with an exact name or prefix.", strings.Join(names, ", "))
 	}
 
 	return &matches[0], nil
