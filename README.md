@@ -20,18 +20,20 @@ This project provides a [Model Context Protocol (MCP)](https://modelcontextproto
 
 ### Get Operations
 
-#### `pipelinerun_describe` – Get a specific PipelineRun by name or filters
+#### `pipelinerun_get` – Get a specific PipelineRun by name or filters
 - `name`: Name of the PipelineRun to get (string, optional)
 - `namespace`: Namespace of the PipelineRun (string, optional, default: current kubeconfig namespace; use `-` for all namespaces)
 - `labelSelector`: Label selector to filter PipelineRuns (string, optional, comma-separated `key=value` pairs)
 - `prefix`: Name prefix to filter PipelineRuns (string, optional)
+- `output`: Return format - json or yaml (string, optional, default: "yaml")
 - `selectLast`: If true, automatically select the most recent match when multiple runs match the filters (boolean, optional, default: true). When false, returns an error if multiple matches are found. Useful because run names are not unique in Tekton Results history.
 
-#### `taskrun_describe` – Get a specific TaskRun by name or filters
+#### `taskrun_get` – Get a specific TaskRun by name or filters
 - `name`: Name of the TaskRun to get (string, optional)
 - `namespace`: Namespace of the TaskRun (string, optional, default: current kubeconfig namespace; use `-` for all namespaces)
 - `labelSelector`: Label selector to filter TaskRuns (string, optional, comma-separated `key=value` pairs)
 - `prefix`: Name prefix to filter TaskRuns (string, optional)
+- `output`: Return format - json or yaml (string, optional, default: "yaml")
 - `selectLast`: If true, automatically select the most recent match when multiple runs match the filters (boolean, optional, default: true). When false, returns an error if multiple matches are found. Useful because run names are not unique in Tekton Results history.
 
 ### Log Operations
@@ -56,7 +58,7 @@ This project provides a [Model Context Protocol (MCP)](https://modelcontextproto
 
 ## Handling Multiple Matches with `selectLast`
 
-When using `pipelinerun_describe`, `pipelinerun_logs`, `taskrun_describe`, or `taskrun_logs`, you may encounter situations where multiple runs match your filters. This commonly happens because:
+When using `pipelinerun_get`, `pipelinerun_logs`, `taskrun_get`, or `taskrun_logs`, you may encounter situations where multiple runs match your filters. This commonly happens because:
 
 - Run names are unique on the cluster at any given time, but not in Tekton Results history
 - The same PipelineRun/TaskRun name can be reused across multiple executions

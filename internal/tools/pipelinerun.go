@@ -25,7 +25,7 @@ type listParams struct {
 	Limit         int    `json:"limit"`
 }
 
-type describeParams struct {
+type getParams struct {
 	Namespace     string `json:"namespace"`
 	LabelSelector string `json:"labelSelector"`
 	Prefix        string `json:"prefix"`
@@ -45,7 +45,7 @@ type logsParams struct {
 func pipelineRunTools(deps Dependencies) ([]server.ServerTool, error) {
 	return []server.ServerTool{
 		newPipelineRunListTool(deps),
-		newPipelineRunDescribeTool(deps),
+		newPipelineRunGetTool(deps),
 		newPipelineRunLogsTool(deps),
 	}, nil
 }
@@ -106,16 +106,16 @@ func newPipelineRunListTool(deps Dependencies) server.ServerTool {
 	}
 }
 
-func newPipelineRunDescribeTool(deps Dependencies) server.ServerTool {
+func newPipelineRunGetTool(deps Dependencies) server.ServerTool {
 	namespaceDefault := deps.DefaultNamespace
 	if namespaceDefault == "" {
 		namespaceDefault = "default"
 	}
 
 	tool := mcp.NewTool(
-		"pipelinerun_describe",
-		mcp.WithDescription("Describe a Tekton PipelineRun stored in Tekton Results. Provide a name for exact match or combine labelSelector/prefix to narrow results."),
-		mcp.WithToolAnnotation(readOnlyAnnotations("Describe PipelineRun")),
+		"pipelinerun_get",
+		mcp.WithDescription("Get a Tekton PipelineRun stored in Tekton Results. Provide a name for exact match or combine labelSelector/prefix to narrow results. Returns the full resource in YAML (default) or JSON format."),
+		mcp.WithToolAnnotation(readOnlyAnnotations("Get PipelineRun")),
 		mcp.WithString("name",
 			mcp.Description("Exact PipelineRun name. Optional if labelSelector/prefix uniquely identify a run."),
 			mcp.DefaultString(""),
@@ -142,7 +142,7 @@ func newPipelineRunDescribeTool(deps Dependencies) server.ServerTool {
 		),
 	)
 
-	handler := mcp.NewTypedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args describeParams) (*mcp.CallToolResult, error) {
+	handler := mcp.NewTypedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args getParams) (*mcp.CallToolResult, error) {
 		if args.Name == "" && args.Prefix == "" && strings.TrimSpace(args.LabelSelector) == "" {
 			return mcp.NewToolResultError("provide at least one of name, prefix, or labelSelector to identify a PipelineRun"), nil
 		}

@@ -15,7 +15,7 @@ import (
 func taskRunTools(deps Dependencies) ([]server.ServerTool, error) {
 	return []server.ServerTool{
 		newTaskRunListTool(deps),
-		newTaskRunDescribeTool(deps),
+		newTaskRunGetTool(deps),
 		newTaskRunLogsTool(deps),
 	}, nil
 }
@@ -76,16 +76,16 @@ func newTaskRunListTool(deps Dependencies) server.ServerTool {
 	}
 }
 
-func newTaskRunDescribeTool(deps Dependencies) server.ServerTool {
+func newTaskRunGetTool(deps Dependencies) server.ServerTool {
 	namespaceDefault := deps.DefaultNamespace
 	if namespaceDefault == "" {
 		namespaceDefault = "default"
 	}
 
 	tool := mcp.NewTool(
-		"taskrun_describe",
-		mcp.WithDescription("Describe a Tekton TaskRun stored in Tekton Results. Provide a name for exact match or combine labelSelector/prefix to narrow results."),
-		mcp.WithToolAnnotation(readOnlyAnnotations("Describe TaskRun")),
+		"taskrun_get",
+		mcp.WithDescription("Get a Tekton TaskRun stored in Tekton Results. Provide a name for exact match or combine labelSelector/prefix to narrow results. Returns the full resource in YAML (default) or JSON format."),
+		mcp.WithToolAnnotation(readOnlyAnnotations("Get TaskRun")),
 		mcp.WithString("name",
 			mcp.Description("Exact TaskRun name. Optional if labelSelector/prefix uniquely identify a run."),
 			mcp.DefaultString(""),
@@ -112,7 +112,7 @@ func newTaskRunDescribeTool(deps Dependencies) server.ServerTool {
 		),
 	)
 
-	handler := mcp.NewTypedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args describeParams) (*mcp.CallToolResult, error) {
+	handler := mcp.NewTypedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args getParams) (*mcp.CallToolResult, error) {
 		if args.Name == "" && args.Prefix == "" && strings.TrimSpace(args.LabelSelector) == "" {
 			return mcp.NewToolResultError("provide at least one of name, prefix, or labelSelector to identify a TaskRun"), nil
 		}
