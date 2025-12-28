@@ -1,45 +1,64 @@
-# tekton-results-mcp-server
+# Tekton Results Model Context Protocol server
 
-MCP Server for Tekton Results
+This project provides a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server for accessing historical Tekton PipelineRun and TaskRun data stored in [Tekton Results](https://github.com/tektoncd/results).
 
-## Available tools
+## Tools
 
-The server exposes read-only tools for PipelineRuns and TaskRuns inside a Tekton
-Results deployment:
+### List Operations
 
-- `pipelinerun_list` / `taskrun_list` – return JSON summaries filtered by
-  namespace, label selectors, name prefixes, and result count limits.
-- `pipelinerun_describe` / `taskrun_describe` – fetch a single run and emit the
-  full resource in YAML (default) or JSON.
-- `pipelinerun_logs` / `taskrun_logs` – retrieve stored logs for completed runs.
-  - For PipelineRuns: fetches logs from all TaskRuns in execution order (sorted by completion time).
-  - For TaskRuns: fetches logs directly from the TaskRun.
+#### `pipelinerun_list` – List PipelineRuns from Tekton Results with Filtering Options
+- `namespace`: Namespace to list PipelineRuns from (string, optional, default: current kubeconfig namespace; use `-` for all namespaces)
+- `labelSelector`: Label selector to filter PipelineRuns (string, optional, comma-separated `key=value` pairs)
+- `prefix`: Name prefix to filter PipelineRuns (string, optional)
+- `limit`: Maximum number of results to return (integer, optional, range: 1-200, default: 50)
 
-The filters mirror Tekton Results behavior:
+#### `taskrun_list` – List TaskRuns from Tekton Results with Filtering Options
+- `namespace`: Namespace to list TaskRuns from (string, optional, default: current kubeconfig namespace; use `-` for all namespaces)
+- `labelSelector`: Label selector to filter TaskRuns (string, optional, comma-separated `key=value` pairs)
+- `prefix`: Name prefix to filter TaskRuns (string, optional)
+- `limit`: Maximum number of results to return (integer, optional, range: 1-200, default: 50)
 
-- `namespace`: defaults to the current kubeconfig namespace; use `-` to search
-  all namespaces.
-- `labelSelector`: comma separated `key=value` pairs.
-- `prefix`: run name prefix.
-- `limit` (list only): cap returned items between 1 and 200.
-- `selectLast` (describe and logs only): when `true` (default), automatically
-  selects the most recent match if multiple runs match the filters. When `false`,
-  returns an error if multiple matches are found, requiring more specific filters.
-  This is useful because run names are not unique in Tekton Results history.
+### Get Operations
 
-All tools rely on the in-cluster or kubeconfig context used to start the MCP
-server, so no additional Tekton Results credentials are required. When running
-outside the cluster, ensure the kubeconfig context has access to the Tekton
-Results aggregated API.
+#### `pipelinerun_describe` – Get a specific PipelineRun by name or filters
+- `name`: Name of the PipelineRun to get (string, optional)
+- `namespace`: Namespace of the PipelineRun (string, optional, default: current kubeconfig namespace; use `-` for all namespaces)
+- `labelSelector`: Label selector to filter PipelineRuns (string, optional, comma-separated `key=value` pairs)
+- `prefix`: Name prefix to filter PipelineRuns (string, optional)
+- `selectLast`: If true, automatically select the most recent match when multiple runs match the filters (boolean, optional, default: true). When false, returns an error if multiple matches are found. Useful because run names are not unique in Tekton Results history.
 
-### Handling multiple matches with `selectLast`
+#### `taskrun_describe` – Get a specific TaskRun by name or filters
+- `name`: Name of the TaskRun to get (string, optional)
+- `namespace`: Namespace of the TaskRun (string, optional, default: current kubeconfig namespace; use `-` for all namespaces)
+- `labelSelector`: Label selector to filter TaskRuns (string, optional, comma-separated `key=value` pairs)
+- `prefix`: Name prefix to filter TaskRuns (string, optional)
+- `selectLast`: If true, automatically select the most recent match when multiple runs match the filters (boolean, optional, default: true). When false, returns an error if multiple matches are found. Useful because run names are not unique in Tekton Results history.
 
-When using `pipelinerun_describe`, `pipelinerun_logs`, `taskrun_describe`, or
-`taskrun_logs`, you may encounter situations where multiple runs match your
-filters. This commonly happens because:
+### Log Operations
 
-- Run names are unique on the cluster at any given time, but not in Tekton
-  Results history
+#### `pipelinerun_logs` – Get logs for a PipelineRun
+- `name`: Name of the PipelineRun to get logs from (string, optional)
+- `namespace`: Namespace where the PipelineRun is located (string, optional, default: current kubeconfig namespace; use `-` for all namespaces)
+- `labelSelector`: Label selector to filter PipelineRuns (string, optional, comma-separated `key=value` pairs)
+- `prefix`: Name prefix to filter PipelineRuns (string, optional)
+- `selectLast`: If true, automatically select the most recent match when multiple runs match the filters (boolean, optional, default: true). When false, returns an error if multiple matches are found. Useful because run names are not unique in Tekton Results history.
+
+**Note:** This tool fetches logs from all TaskRuns associated with the PipelineRun, sorted by completion time in execution order. Logs are only available after the PipelineRun has completed.
+
+#### `taskrun_logs` – Get logs for a TaskRun
+- `name`: Name of the TaskRun to get logs from (string, optional)
+- `namespace`: Namespace where the TaskRun is located (string, optional, default: current kubeconfig namespace; use `-` for all namespaces)
+- `labelSelector`: Label selector to filter TaskRuns (string, optional, comma-separated `key=value` pairs)
+- `prefix`: Name prefix to filter TaskRuns (string, optional)
+- `selectLast`: If true, automatically select the most recent match when multiple runs match the filters (boolean, optional, default: true). When false, returns an error if multiple matches are found. Useful because run names are not unique in Tekton Results history.
+
+**Note:** Logs are only available after the TaskRun has completed and could even take a bit longer depending on logger confuguration (buffering, etc.).
+
+## Handling Multiple Matches with `selectLast`
+
+When using `pipelinerun_describe`, `pipelinerun_logs`, `taskrun_describe`, or `taskrun_logs`, you may encounter situations where multiple runs match your filters. This commonly happens because:
+
+- Run names are unique on the cluster at any given time, but not in Tekton Results history
 - The same PipelineRun/TaskRun name can be reused across multiple executions
 - Each execution is stored with a unique UID but the same name
 
@@ -73,19 +92,18 @@ To avoid ambiguity, you can:
 - Add label selectors to narrow results
 - Use `selectLast=true` to automatically pick the most recent run
 
-### Direct Tekton Results access
+## Configuration
 
-If your cluster does not expose the aggregated API (for example when you
-port-forward `tekton-results-api-service`), set the following environment
-variables before starting the MCP server:
+### Authentication
 
-- `TEKTON_RESULTS_BASE_URL`: Base host for the API server (e.g.
-  `https://localhost:8443`). The MCP server automatically appends
-  `/apis/results.tekton.dev/v1alpha2`.
-- `TEKTON_RESULTS_BEARER_TOKEN`: Optional bearer token to authenticate against
-  the Tekton Results API. If omitted, the token from your kubeconfig is used.
-- `TEKTON_RESULTS_INSECURE_SKIP_VERIFY`: Set to `true` when using self-signed
-  certificates (for example, with port-forwarded services).
+All tools rely on the in-cluster or kubeconfig context used to start the MCP server, so no additional Tekton Results credentials are required. When running outside the cluster, ensure the kubeconfig context has access to the Tekton Results aggregated API.
 
-When these variables are not set, the MCP server communicates with Tekton
-Results through the Kubernetes aggregated API endpoint (`/apis/results.tekton.dev`).
+### Direct Tekton Results Access
+
+If your cluster does not expose the aggregated API (for example when you port-forward `tekton-results-api-service`), set the following environment variables before starting the MCP server:
+
+- `TEKTON_RESULTS_BASE_URL`: Base host for the API server (e.g., `https://localhost:8443`). The MCP server automatically appends `/apis/results.tekton.dev/v1alpha2`.
+- `TEKTON_RESULTS_BEARER_TOKEN`: Optional bearer token to authenticate against the Tekton Results API. If omitted, the token from your kubeconfig is used.
+- `TEKTON_RESULTS_INSECURE_SKIP_VERIFY`: Set to `true` when using self-signed certificates (for example, with port-forwarded services).
+
+When these variables are not set, the MCP server communicates with Tekton Results through the Kubernetes aggregated API endpoint (`/apis/results.tekton.dev`).
