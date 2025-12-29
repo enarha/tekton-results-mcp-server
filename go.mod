@@ -3,7 +3,7 @@ module github.com/enarha/tekton-results-mcp-server
 go 1.24.3
 
 require (
-	github.com/mark3labs/mcp-go v0.43.0
+	github.com/mark3labs/mcp-go v0.43.2
 	k8s.io/apimachinery v0.33.7
 	k8s.io/client-go v0.33.7
 	knative.dev/pkg v0.0.0-20250520014526-44579e9ce5ed
