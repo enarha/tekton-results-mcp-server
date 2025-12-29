@@ -34,8 +34,16 @@ var resourceTypeFilters = map[resourceKind][]string{
 }
 
 // Service exposes convenience helpers to interact with Tekton Results.
+// resultsClient is an interface for interacting with the Tekton Results API
+type resultsClient interface {
+	getRecord(ctx context.Context, recordName string) (*record, error)
+	listResults(ctx context.Context, req listResultsRequest) (*listResultsResponse, error)
+	listRecords(ctx context.Context, req listRecordsRequest) (*listRecordsResponse, error)
+	getLog(ctx context.Context, logPath string) ([]byte, error)
+}
+
 type Service struct {
-	client *restClient
+	client resultsClient
 }
 
 // NewService constructs a Service using the Kubernetes REST config for auth.

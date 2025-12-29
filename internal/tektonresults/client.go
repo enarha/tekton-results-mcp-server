@@ -123,6 +123,8 @@ func (r *record) GetValue() (json.RawMessage, error) {
 		return r.Data.valueDecoded, nil
 	}
 
+	var base64Str string
+
 	// Try to unmarshal as JSON first
 	var test interface{}
 	if err := json.Unmarshal(r.Data.Value, &test); err == nil {
@@ -131,23 +133,19 @@ func (r *record) GetValue() (json.RawMessage, error) {
 			r.Data.valueDecoded = r.Data.Value
 			return r.Data.Value, nil
 		}
-		// It's a JSON string, need to decode the base64
-		var base64Str string
+		// It's a JSON string, extract it for base64 decoding
 		if err := json.Unmarshal(r.Data.Value, &base64Str); err != nil {
 			return nil, fmt.Errorf("decode base64 string from JSON: %w", err)
 		}
-		decoded, err := base64.StdEncoding.DecodeString(base64Str)
-		if err != nil {
-			return nil, fmt.Errorf("decode base64: %w", err)
-		}
-		r.Data.valueDecoded = json.RawMessage(decoded)
-		return r.Data.valueDecoded, nil
+	} else {
+		// Assume it's raw base64 (shouldn't happen but handle it)
+		base64Str = string(r.Data.Value)
 	}
 
-	// Assume it's raw base64 (shouldn't happen but handle it)
-	decoded, err := base64.StdEncoding.DecodeString(string(r.Data.Value))
+	// Decode base64 (common path for both JSON string and raw base64)
+	decoded, err := base64.StdEncoding.DecodeString(base64Str)
 	if err != nil {
-		return nil, fmt.Errorf("decode raw base64: %w", err)
+		return nil, fmt.Errorf("decode base64: %w", err)
 	}
 	r.Data.valueDecoded = json.RawMessage(decoded)
 	return r.Data.valueDecoded, nil
