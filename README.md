@@ -1,4 +1,4 @@
-# Tekton Results Model Context Protocol server
+# Tekton Results MCP server
 
 This project provides a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server for accessing historical Tekton PipelineRun and TaskRun data stored in [Tekton Results](https://github.com/tektoncd/results).
 
@@ -113,3 +113,7 @@ If your cluster does not expose the aggregated API (for example when you port-fo
 - `TEKTON_RESULTS_INSECURE_SKIP_VERIFY`: Set to `true` when using self-signed certificates (for example, with port-forwarded services).
 
 When these variables are not set, the MCP server communicates with Tekton Results through the Kubernetes aggregated API endpoint (`/apis/results.tekton.dev`).
+
+## Development and Contributing
+
+Check the [CONTRIBUTING.md](CONTRIBUTING.md) guide.
