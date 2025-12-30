@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -10,9 +11,18 @@ import (
 	"github.com/enarha/tekton-results-mcp-server/internal/tektonresults"
 )
 
+// Service interface defines the methods that tools use from tektonresults.Service
+type Service interface {
+	ListPipelineRuns(ctx context.Context, opts tektonresults.ListOptions) ([]tektonresults.RunSummary, error)
+	ListTaskRuns(ctx context.Context, opts tektonresults.ListOptions) ([]tektonresults.RunSummary, error)
+	GetPipelineRun(ctx context.Context, selector tektonresults.RunSelector) (*tektonresults.RunDetail, error)
+	GetTaskRun(ctx context.Context, selector tektonresults.RunSelector) (*tektonresults.RunDetail, error)
+	FetchLogs(ctx context.Context, recordName string) (string, error)
+}
+
 // Dependencies bundles the shared objects every tool relies on.
 type Dependencies struct {
-	Service          *tektonresults.Service
+	Service          Service
 	DefaultNamespace string
 }
 
