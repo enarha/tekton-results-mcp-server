@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Verify vendor directory is in sync
+        run: |
+          go mod vendor
+          git diff --exit-code vendor/ || (echo "Vendor directory is out of sync. Run 'make tidy' and commit the changes." && exit 1)
+        
+      - name: Run unit tests
+        run: |
+          echo "Running unit tests..."
+          go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Run integration tests
+        run: |
+          echo "Running integration tests..."
+          go test -v -race -tags=integration ./internal/tektonresults/...
+
+      - name: Check test coverage
+        run: |
+          go tool cover -func=coverage.out
+
+      - name: Run go vet
+        run: |
+          echo "Running go vet..."
+          go vet ./...
+
+      - name: Run gofmt
+        run: |
+          echo "Checking code formatting..."
+          gofmt_output=$(gofmt -l .)
+          if [ -n "$gofmt_output" ]; then
+            echo "The following files need formatting:"
+            echo "$gofmt_output"
+            exit 1
+          fi
+
+      - name: Upload coverage to Codecov (optional)
+        uses: codecov/codecov-action@v4
+        if: github.event_name == 'pull_request'
+        with:
+          file: ./coverage.out
+          flags: unittests
+          fail_ci_if_error: false
+        continue-on-error: true
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          args: --timeout=5m
+
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Build all packages including main
+        run: |
+          echo "Building all packages (including cmd/tekton-results-mcp-server)..."
+          go build -v ./...
+          echo "All packages compiled successfully"
+
