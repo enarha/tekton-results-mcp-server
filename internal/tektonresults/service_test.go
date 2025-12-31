@@ -10,10 +10,10 @@ import (
 
 // mockRestClient is a test double for restClient
 type mockRestClient struct {
-	getRecordFunc    func(ctx context.Context, recordName string) (*record, error)
-	listResultsFunc  func(ctx context.Context, req listResultsRequest) (*listResultsResponse, error)
-	listRecordsFunc  func(ctx context.Context, req listRecordsRequest) (*listRecordsResponse, error)
-	getLogFunc       func(ctx context.Context, logPath string) ([]byte, error)
+	getRecordFunc   func(ctx context.Context, recordName string) (*record, error)
+	listResultsFunc func(ctx context.Context, req listResultsRequest) (*listResultsResponse, error)
+	listRecordsFunc func(ctx context.Context, req listRecordsRequest) (*listRecordsResponse, error)
+	getLogFunc      func(ctx context.Context, logPath string) ([]byte, error)
 }
 
 func (m *mockRestClient) getRecord(ctx context.Context, recordName string) (*record, error) {
@@ -74,7 +74,7 @@ func TestService_GetRun_PipelineRun_DirectGetSuccess(t *testing.T) {
 	}
 
 	service := &Service{client: mockClient}
-	
+
 	detail, err := service.getRun(context.Background(), resourceKindPipelineRun, RunSelector{
 		Namespace: namespace,
 		UID:       prUID,
@@ -106,7 +106,7 @@ func TestService_GetRun_PipelineRun_NotFound(t *testing.T) {
 	}
 
 	service := &Service{client: mockClient}
-	
+
 	_, err := service.getRun(context.Background(), resourceKindPipelineRun, RunSelector{
 		Namespace: namespace,
 		UID:       prUID,
@@ -139,7 +139,7 @@ func TestService_GetRun_PipelineRun_DefaultNamespace(t *testing.T) {
 	}
 
 	service := &Service{client: mockClient}
-	
+
 	_, err := service.getRun(context.Background(), resourceKindPipelineRun, RunSelector{
 		Namespace: "", // Empty namespace
 		UID:       prUID,
@@ -182,7 +182,7 @@ func TestService_GetRun_StandaloneTaskRun_DirectGetSuccess(t *testing.T) {
 	}
 
 	service := &Service{client: mockClient}
-	
+
 	detail, err := service.getRun(context.Background(), resourceKindTaskRun, RunSelector{
 		Namespace: namespace,
 		UID:       trUID,
@@ -241,7 +241,7 @@ func TestService_GetRun_TaskRunInPipeline_FallbackSuccess(t *testing.T) {
 	}
 
 	service := &Service{client: mockClient}
-	
+
 	detail, err := service.getRun(context.Background(), resourceKindTaskRun, RunSelector{
 		Namespace: namespace,
 		UID:       trUID,
@@ -280,7 +280,7 @@ func TestService_GetRun_TaskRunInPipeline_FallbackNotFound(t *testing.T) {
 	}
 
 	service := &Service{client: mockClient}
-	
+
 	_, err := service.getRun(context.Background(), resourceKindTaskRun, RunSelector{
 		Namespace: namespace,
 		UID:       trUID,
@@ -312,7 +312,7 @@ func TestService_GetRun_ByName_WithSelectLast_MultipleMatches(t *testing.T) {
 				"metadata": {"name":"%s","namespace":"%s","uid":"uid-newer"},
 				"spec": {}, "status": {"startTime":"2025-12-29T12:00:00Z"}
 			}`, runName, namespace))
-			
+
 			rec2 := record{
 				Name: fmt.Sprintf("%s/results/uid-older/records/uid-older", namespace),
 				Uid:  "uid-older",
@@ -323,7 +323,7 @@ func TestService_GetRun_ByName_WithSelectLast_MultipleMatches(t *testing.T) {
 				"metadata": {"name":"%s","namespace":"%s","uid":"uid-older"},
 				"spec": {}, "status": {"startTime":"2025-12-29T11:00:00Z"}
 			}`, runName, namespace))
-			
+
 			return &listRecordsResponse{
 				Records: []record{rec1, rec2},
 			}, nil
@@ -331,7 +331,7 @@ func TestService_GetRun_ByName_WithSelectLast_MultipleMatches(t *testing.T) {
 	}
 
 	service := &Service{client: mockClient}
-	
+
 	// With SelectLast=true, should return first match (most recent due to create_time desc ordering)
 	detail, err := service.getRun(context.Background(), resourceKindTaskRun, RunSelector{
 		Namespace:  namespace,
@@ -363,13 +363,13 @@ func TestService_GetRun_ByName_WithoutSelectLast_MultipleMatches(t *testing.T) {
 				Uid:  "uid-1",
 			}
 			rec1.Data.Value = json.RawMessage(fmt.Sprintf(`{"apiVersion":"tekton.dev/v1","kind":"TaskRun","metadata":{"name":"%s","namespace":"%s","uid":"uid-1"},"spec":{},"status":{}}`, runName, namespace))
-			
+
 			rec2 := record{
 				Name: fmt.Sprintf("%s/results/uid-2/records/uid-2", namespace),
 				Uid:  "uid-2",
 			}
 			rec2.Data.Value = json.RawMessage(fmt.Sprintf(`{"apiVersion":"tekton.dev/v1","kind":"TaskRun","metadata":{"name":"%s","namespace":"%s","uid":"uid-2"},"spec":{},"status":{}}`, runName, namespace))
-			
+
 			return &listRecordsResponse{
 				Records: []record{rec1, rec2},
 			}, nil
@@ -377,7 +377,7 @@ func TestService_GetRun_ByName_WithoutSelectLast_MultipleMatches(t *testing.T) {
 	}
 
 	service := &Service{client: mockClient}
-	
+
 	// With SelectLast=false, should return error for multiple matches
 	_, err := service.getRun(context.Background(), resourceKindTaskRun, RunSelector{
 		Namespace:  namespace,
@@ -407,13 +407,13 @@ func TestService_QueryRecords_UIDFilter(t *testing.T) {
 				Uid:  targetUID,
 			}
 			rec1.Data.Value = json.RawMessage(fmt.Sprintf(`{"apiVersion":"tekton.dev/v1","kind":"TaskRun","metadata":{"name":"target-tr","namespace":"%s","uid":"%s"},"spec":{},"status":{}}`, namespace, targetUID))
-			
+
 			rec2 := record{
 				Name: fmt.Sprintf("%s/results/r2/records/%s", namespace, otherUID),
 				Uid:  otherUID,
 			}
 			rec2.Data.Value = json.RawMessage(fmt.Sprintf(`{"apiVersion":"tekton.dev/v1","kind":"TaskRun","metadata":{"name":"other-tr","namespace":"%s","uid":"%s"},"spec":{},"status":{}}`, namespace, otherUID))
-			
+
 			return &listRecordsResponse{
 				Records: []record{rec1, rec2},
 			}, nil
@@ -475,4 +475,3 @@ func TestService_QueryRecords_EmptyResults(t *testing.T) {
 		t.Errorf("Expected 'no run found' error, got: %v", err)
 	}
 }
-

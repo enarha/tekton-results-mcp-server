@@ -1,4 +1,4 @@
-.PHONY: build test test-integration test-all clean lint tidy help
+.PHONY: build test test-integration test-all clean fmt lint tidy help
 
 # Go parameters
 GOCMD=go
@@ -7,6 +7,7 @@ GOTEST=$(GOCMD) test
 GOCLEAN=$(GOCMD) clean
 GOMOD=$(GOCMD) mod
 GOFMT=$(GOCMD) fmt
+GOFMTBIN=gofmt
 
 # Binary name
 BINARY_NAME=tekton-results-mcp-server
@@ -19,6 +20,7 @@ help:
 	@echo "  test              - Run unit tests"
 	@echo "  test-integration  - Run integration tests (with mock servers)"
 	@echo "  test-all          - Run all tests (unit + integration)"
+	@echo "  fmt               - Format Go code (excludes vendor)"
 	@echo "  clean             - Remove build artifacts (optional)"
 	@echo "  lint              - Run code formatting and linting"
 	@echo "  tidy              - Tidy and vendor Go modules (only if you added/removed imports)"
@@ -47,6 +49,12 @@ test-all:
 	@echo "Running all tests..."
 	$(GOTEST) -v -race -tags=integration -coverprofile=coverage-all.out ./...
 	@echo "All tests completed"
+
+## fmt: Format Go code (excludes vendor directory)
+fmt:
+	@echo "Formatting Go code..."
+	@find . -name '*.go' -not -path './vendor/*' -exec $(GOFMTBIN) -w {} \;
+	@echo "Code formatted"
 
 ## clean: Remove build artifacts (optional, binary is git-ignored)
 clean:

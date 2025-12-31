@@ -93,7 +93,7 @@ func TestRestClient_GetRecord(t *testing.T) {
 				if r.URL.Path != expectedPath {
 					t.Errorf("Expected path %s, got %s", expectedPath, r.URL.Path)
 				}
-				
+
 				resp := record{
 					Name: "foo/results/test-uid/records/test-uid",
 					Uid:  "test-uid",
@@ -157,7 +157,7 @@ func TestRestClient_GetRecord(t *testing.T) {
 			}
 
 			got, err := client.getRecord(context.Background(), tt.recordName)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getRecord() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -185,9 +185,9 @@ func TestRestClient_GetRecord(t *testing.T) {
 func TestRestClient_GetRecord_PathFormatting(t *testing.T) {
 	// Test that various record name formats all result in correct path with parents/ prefix
 	tests := []struct {
-		name           string
-		recordName     string
-		expectedPath   string
+		name         string
+		recordName   string
+		expectedPath string
 	}{
 		{
 			name:         "without leading slash",
@@ -250,7 +250,7 @@ func TestRestClient_ListResults_MinimumPageSize(t *testing.T) {
 				}
 			}
 		}
-		
+
 		//nolint:errcheck // Writing to test HTTP response writer
 		json.NewEncoder(w).Encode(listResultsResponse{
 			Results: []result{
@@ -273,7 +273,7 @@ func TestRestClient_ListResults_MinimumPageSize(t *testing.T) {
 		Filter:   `uid=="test-uid"`,
 		PageSize: 5,
 	})
-	
+
 	if err != nil {
 		t.Errorf("listResults with page_size=5 failed: %v", err)
 	}
@@ -281,4 +281,3 @@ func TestRestClient_ListResults_MinimumPageSize(t *testing.T) {
 		t.Errorf("Expected 1 result, got %d", len(resp.Results))
 	}
 }
-

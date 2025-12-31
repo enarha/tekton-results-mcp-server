@@ -50,10 +50,11 @@ jobs:
       - name: Run gofmt
         run: |
           echo "Checking code formatting..."
-          gofmt_output=$(gofmt -l .)
+          gofmt_output=$(find . -name '*.go' -not -path './vendor/*' -exec gofmt -l {} \;)
           if [ -n "$gofmt_output" ]; then
             echo "The following files need formatting:"
             echo "$gofmt_output"
+            echo "Run 'make fmt' to fix formatting issues"
             exit 1
           fi
 
