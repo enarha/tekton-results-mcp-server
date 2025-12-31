@@ -99,6 +99,7 @@ func TestRestClient_GetRecord(t *testing.T) {
 					Uid:  "test-uid",
 				}
 				resp.Data.Value = json.RawMessage(`{"metadata":{"name":"test-pr","uid":"test-uid"}}`)
+				//nolint:errcheck // Writing to test HTTP response writer
 				json.NewEncoder(w).Encode(resp)
 			},
 			wantErr: false,
@@ -112,6 +113,7 @@ func TestRestClient_GetRecord(t *testing.T) {
 			recordName: "foo/results/missing-uid/records/missing-uid",
 			serverResponse: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
+				//nolint:errcheck // Writing to test HTTP response writer
 				w.Write([]byte(`{"code":5,"message":"record not found"}`))
 			},
 			wantErr:     true,
@@ -130,6 +132,7 @@ func TestRestClient_GetRecord(t *testing.T) {
 			name:       "malformed JSON response",
 			recordName: "foo/results/test-uid/records/test-uid",
 			serverResponse: func(w http.ResponseWriter, r *http.Request) {
+				//nolint:errcheck // Writing to test HTTP response writer
 				w.Write([]byte(`{invalid json`))
 			},
 			wantErr:     true,
@@ -208,6 +211,7 @@ func TestRestClient_GetRecord_PathFormatting(t *testing.T) {
 			var receivedPath string
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				receivedPath = r.URL.Path
+				//nolint:errcheck // Writing to test HTTP response writer
 				json.NewEncoder(w).Encode(record{Name: tt.recordName, Uid: "test"})
 			}))
 			defer server.Close()
@@ -240,12 +244,14 @@ func TestRestClient_ListResults_MinimumPageSize(t *testing.T) {
 			if _, err := fmt.Sscanf(pageSize, "%d", &size); err == nil {
 				if size < 5 {
 					w.WriteHeader(http.StatusBadRequest)
+					//nolint:errcheck // Writing to test HTTP response writer
 					w.Write([]byte(`{"code":3,"message":"invalid page size: value must be greater than 5"}`))
 					return
 				}
 			}
 		}
 		
+		//nolint:errcheck // Writing to test HTTP response writer
 		json.NewEncoder(w).Encode(listResultsResponse{
 			Results: []result{
 				{Name: "foo/results/test-uid", UID: "test-uid"},
