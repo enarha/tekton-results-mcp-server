@@ -351,7 +351,7 @@ func (s *Service) queryRecords(ctx context.Context, req listRecordsRequest, sele
 		for _, match := range matches {
 			names = append(names, fmt.Sprintf("%s/%s", match.Summary.Namespace, match.Summary.Name))
 		}
-		return nil, fmt.Errorf("multiple run instances match the filters (%s). Please refine the filters with an exact name or prefix.", strings.Join(names, ", "))
+		return nil, fmt.Errorf("multiple run instances match the filters (%s). Please refine the filters with an exact name or prefix", strings.Join(names, ", "))
 	}
 
 	return &matches[0], nil

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
@@ -266,7 +267,11 @@ func (c *restClient) do(ctx context.Context, method, relPath string, params url.
 	if err != nil {
 		return nil, fmt.Errorf("perform %s request: %w", method, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			slog.Warn("failed to close response body", "error", closeErr)
+		}
+	}()
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
