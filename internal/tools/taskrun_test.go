@@ -415,7 +415,7 @@ func TestTaskRunGet_ServiceError(t *testing.T) {
 
 func TestTaskRunLogs_ByName(t *testing.T) {
 	completionTime := metav1.NewTime(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC))
-	
+
 	var getTaskRunCalled bool
 	mock := &mockTaskRunService{
 		getTaskRunFunc: func(ctx context.Context, selector tektonresults.RunSelector) (*tektonresults.RunDetail, error) {

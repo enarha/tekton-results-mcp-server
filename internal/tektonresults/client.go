@@ -105,8 +105,8 @@ type result struct {
 }
 
 type listResultsResponse struct {
-	Results      []result `json:"results"`
-	NextPageToken string  `json:"nextPageToken"`
+	Results       []result `json:"results"`
+	NextPageToken string   `json:"nextPageToken"`
 }
 
 type record struct {

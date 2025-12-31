@@ -12,7 +12,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 **Standard pre-PR workflow** (run this before every PR):
 ```bash
-make build && make test-all && make lint
+make fmt && make build && make test-all && make lint
 ```
 
 **Only if you added/removed imports:**
@@ -56,6 +56,9 @@ make build && make test-all && make lint
 ### Individual Test Commands
 
 ```bash
+# Format Go code (excludes vendor directory)
+make fmt
+
 # Build the binary (verifies main.go compiles)
 make build
 
@@ -75,7 +78,7 @@ make lint
 make clean
 ```
 
-**Note**: You don't need to run `make clean` after building or testing. The binary is ignored by git and won't interfere with your work. Run `make clean` only if you want to free up disk space or force a complete rebuild.
+**Note**: Always run `make fmt` before committing to ensure consistent code formatting. You don't need to run `make clean` after building or testing. The binary is ignored by git and won't interfere with your work. Run `make clean` only if you want to free up disk space or force a complete rebuild.
 
 ### When to Tidy and Vendor Dependencies
 
@@ -130,9 +133,10 @@ This will:
 
 Before opening a PR, ensure:
 
+- [ ] Code is properly formatted: `make fmt`
 - [ ] Code builds successfully: `make build`
 - [ ] All tests pass: `make test-all`
-- [ ] Code is properly formatted: `make lint`
+- [ ] Linting passes: `make lint`
 - [ ] New tests are added for new functionality
 - [ ] Existing tests still pass
 - [ ] Documentation is updated (README.md, code comments)

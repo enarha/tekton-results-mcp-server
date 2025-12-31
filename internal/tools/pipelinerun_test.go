@@ -285,7 +285,7 @@ func TestPipelineRunGet_OutputFormats(t *testing.T) {
 		outputFormat   string
 		expectedInText string
 	}{
-		{"yaml format", "yaml", "metadata:"}, // YAML uses colons
+		{"yaml format", "yaml", "metadata:"},  // YAML uses colons
 		{"json format", "json", `"metadata"`}, // JSON uses quotes
 	}
 
