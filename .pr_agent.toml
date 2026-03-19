@@ -1,0 +1,70 @@
+[pr_reviewer]
+# Focus on essential issues only - no style nitpicking
+require_focused_review = true
+require_score_review = false
+require_tests_review = true
+require_security_review = true
+
+# Avoid linter-style feedback
+require_can_be_split_review = false
+require_estimate_effort_to_review = false
+
+extra_instructions = """
+Focus on correctness, regression risk, and operational safety. Do not comment on:
+- Code style, formatting, or naming conventions
+- Issues that would be caught by linters or CI checks
+- Minor optimizations or refactoring suggestions
+
+DO focus on:
+
+## Controller & Reconciliation Logic
+- Idempotency: Can the reconcile function be called multiple times safely?
+- Eventual consistency: Does the code handle stale cache reads correctly?
+- Status vs Spec separation: Are status updates independent of spec changes?
+- Reconcile completeness: Are all spec changes actually reconciled?
+- Error handling: Do transient errors trigger requeue vs permanent errors?
+
+## Kubernetes Resource Lifecycle
+- Finalizers: Are finalizers added before external resources are created?
+- Deletion handling: Is cleanup idempotent and safe if partially completed?
+- Patch vs Update: Are there conflict/race conditions in resource updates?
+- Owner references: Are dependent resources properly garbage collected?
+- Resource leaks: Are external resources cleaned up on deletion?
+
+## Concurrency & Safety
+- Stale read assumptions: Could a cached read be stale and cause incorrect decisions?
+- Update conflicts: Could concurrent reconciles corrupt resource state?
+- Reentrancy: Is it safe if reconcile is called again before completion?
+- Lock-free assumptions: Are there hidden ordering dependencies?
+
+## API & Behavior Changes
+- Breaking changes to CRD schemas or API behavior
+- Status condition semantics changes
+- Webhook validation/defaulting impact
+- Backward compatibility with existing resources
+
+## Testing & Observability
+- Missing test coverage for error paths, deletion, or edge cases
+- Lack of observability for debugging in production (logs, metrics, events)
+- Test flakiness due to timing, caching, or concurrency
+
+## Security
+- RBAC requirements for new operations
+- Privilege escalation risks
+- Credential handling in reconcile loops
+- Namespace boundary violations
+
+When reviewing Go code, pay attention to:
+- Nil pointer dereferences in Kubernetes API objects
+- Context cancellation handling in reconcile loops
+- Defer statements that may not execute on early returns
+"""
+
+[pr_description]
+# Don't auto-label PRs
+publish_labels = false
+add_original_user_description = true
+
+[pr_code_suggestions]
+# Disable auto-suggestions to avoid nitpicking
+num_code_suggestions = 0
