@@ -19,15 +19,23 @@ jobs:
       # Step 1: Permission Check (Maintainer only)
       - name: Check User Permission
         id: check
-        uses: lannonbr/repo-permission-check-action@2.0.0
-        with:
-          permission: write
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_USER: ${{ github.event.comment.user.login }}
+          REPO: ${{ github.repository }}
+        run: |
+          PERMISSION=$(gh api repos/$REPO/collaborators/$COMMENT_USER/permission --jq '.permission')
+          if [[ "$PERMISSION" == "admin" || "$PERMISSION" == "write" ]]; then
+            echo "permitted=true" >> $GITHUB_OUTPUT
+            echo "User $COMMENT_USER has $PERMISSION permission - allowing review"
+          else
+            echo "permitted=false" >> $GITHUB_OUTPUT
+            echo "User $COMMENT_USER has $PERMISSION permission - skipping review"
+          fi
 
       # Step 2: Trigger PR-Agent with Gemini
       - name: PR Agent Action
-        if: steps.check.outputs.has-permission == 'true'
+        if: steps.check.outputs.permitted == 'true'
         uses: Codium-ai/pr-agent@main
         env:
           # Configuration for Gemini
