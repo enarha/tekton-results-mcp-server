@@ -19,13 +19,15 @@ jobs:
       # Step 1: Permission Check (Maintainer only)
       - name: Check User Permission
         id: check
-        uses: actions-cool/check-user-permission@v2
+        uses: lannonbr/repo-permission-check-action@2.0.0
         with:
-          require-permission: write
+          permission: write
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Step 2: Trigger PR-Agent with Gemini
       - name: PR Agent Action
-        if: steps.check.outputs.require-result == 'true'
+        if: steps.check.outputs.has-permission == 'true'
         uses: Codium-ai/pr-agent@main
         env:
           # Configuration for Gemini
