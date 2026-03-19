@@ -8,7 +8,7 @@ jobs:
   pr_agent_job:
     # Only run if it's a Pull Request comment starting with /ai-review
     if: |
-      github.event.issue.pull_request && 
+      github.event.issue.pull_request &&
       startsWith(github.event.comment.body, '/ai-review')
     runs-on: ubuntu-latest
     permissions:
@@ -19,25 +19,25 @@ jobs:
       # Step 1: Permission Check (Maintainer only)
       - name: Check User Permission
         id: check
-        uses: s0/git-actor-qs@v1
+        uses: actions-cool/check-user-permission@v2
         with:
-          permissions: write,admin
+          require-permission: write
 
       # Step 2: Trigger PR-Agent with Gemini
       - name: PR Agent Action
-        if: steps.check.outputs.permitted == 'true'
+        if: steps.check.outputs.require-result == 'true'
         uses: Codium-ai/pr-agent@main
         env:
           # Configuration for Gemini
           config.model: "gemini/gemini-1.5-flash"
           google_ai_studio.gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          
+
           # GitHub Context
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
           # Command to execute
           PR_AGENT_COMMAND: "/review"
-          
+
           # Optional: Custom behavior
           pr_reviews.inline_code_comments: "true"
           pr_description.publish_labels: "false"
