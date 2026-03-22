@@ -9,7 +9,7 @@ jobs:
     # Run on /review or /improve comments
     if: |
       github.event.issue.pull_request &&
-      (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, '/improve'))
+      (startsWith(github.event.comment.body, '/review')
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -38,7 +38,7 @@ jobs:
         if: steps.check.outputs.permitted == 'true'
         uses: Codium-ai/pr-agent@main
         env:
-          config.model: "gemini/gemini-3.1-flash-lite-preview"
+          config.model: "gemini/gemini-3.1-pro-preview"
           google_ai_studio.gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           pr_reviewer.inline_code_comments: "true"
