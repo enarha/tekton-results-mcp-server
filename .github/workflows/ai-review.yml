@@ -9,7 +9,7 @@ jobs:
     # Run on /review or /improve comments
     if: |
       github.event.issue.pull_request &&
-      (startsWith(github.event.comment.body, '/review')
+      (startsWith(github.event.comment.body, '/review'))
     runs-on: ubuntu-latest
     permissions:
       issues: write
