@@ -19,29 +19,32 @@ const (
 )
 
 type listParams struct {
-	Namespace     string `json:"namespace"`
-	LabelSelector string `json:"labelSelector"`
-	Prefix        string `json:"prefix"`
-	Limit         int    `json:"limit"`
+	Namespace          string `json:"namespace"`
+	LabelSelector      string `json:"labelSelector"`
+	AnnotationSelector string `json:"annotationSelector"`
+	Prefix             string `json:"prefix"`
+	Limit              int    `json:"limit"`
 }
 
 type getParams struct {
-	Namespace     string `json:"namespace"`
-	LabelSelector string `json:"labelSelector"`
-	Prefix        string `json:"prefix"`
-	Name          string `json:"name"`
-	UID           string `json:"uid"`
-	Output        string `json:"output"`
-	SelectLast    bool   `json:"selectLast"`
+	Namespace          string `json:"namespace"`
+	LabelSelector      string `json:"labelSelector"`
+	AnnotationSelector string `json:"annotationSelector"`
+	Prefix             string `json:"prefix"`
+	Name               string `json:"name"`
+	UID                string `json:"uid"`
+	Output             string `json:"output"`
+	SelectLast         bool   `json:"selectLast"`
 }
 
 type logsParams struct {
-	Namespace     string `json:"namespace"`
-	LabelSelector string `json:"labelSelector"`
-	Prefix        string `json:"prefix"`
-	Name          string `json:"name"`
-	UID           string `json:"uid"`
-	SelectLast    bool   `json:"selectLast"`
+	Namespace          string `json:"namespace"`
+	LabelSelector      string `json:"labelSelector"`
+	AnnotationSelector string `json:"annotationSelector"`
+	Prefix             string `json:"prefix"`
+	Name               string `json:"name"`
+	UID                string `json:"uid"`
+	SelectLast         bool   `json:"selectLast"`
 }
 
 func pipelineRunTools(deps Dependencies) ([]server.ServerTool, error) {
@@ -60,7 +63,7 @@ func newPipelineRunListTool(deps Dependencies) server.ServerTool {
 
 	tool := mcp.NewTool(
 		"pipelinerun_list",
-		mcp.WithDescription("List Tekton PipelineRuns stored by the Tekton Results service with optional namespace, label, and name prefix filters."),
+		mcp.WithDescription("List Tekton PipelineRuns stored by the Tekton Results service with optional namespace, label, annotation, and name prefix filters."),
 		mcp.WithToolAnnotation(readOnlyAnnotations("List PipelineRuns")),
 		mcp.WithString("namespace",
 			mcp.Description("Kubernetes namespace to query. Use '-' to search across all namespaces."),
@@ -68,6 +71,10 @@ func newPipelineRunListTool(deps Dependencies) server.ServerTool {
 		),
 		mcp.WithString("labelSelector",
 			mcp.Description("Comma separated key=value selectors that must match run labels."),
+			mcp.DefaultString(""),
+		),
+		mcp.WithString("annotationSelector",
+			mcp.Description("Comma separated key=value selectors that must match run annotations."),
 			mcp.DefaultString(""),
 		),
 		mcp.WithString("prefix",
@@ -85,10 +92,11 @@ func newPipelineRunListTool(deps Dependencies) server.ServerTool {
 	handler := mcp.NewTypedToolHandler(func(ctx context.Context, _ mcp.CallToolRequest, args listParams) (*mcp.CallToolResult, error) {
 		ns := normalizeNamespace(args.Namespace, namespaceDefault)
 		opts := tektonresults.ListOptions{
-			Namespace:     ns,
-			LabelSelector: args.LabelSelector,
-			Prefix:        args.Prefix,
-			Limit:         sanitizeLimit(args.Limit),
+			Namespace:          ns,
+			LabelSelector:      args.LabelSelector,
+			AnnotationSelector: args.AnnotationSelector,
+			Prefix:             args.Prefix,
+			Limit:              sanitizeLimit(args.Limit),
 		}
 
 		summaries, err := deps.Service.ListPipelineRuns(ctx, opts)
@@ -116,10 +124,10 @@ func newPipelineRunGetTool(deps Dependencies) server.ServerTool {
 
 	tool := mcp.NewTool(
 		"pipelinerun_get",
-		mcp.WithDescription("Get a Tekton PipelineRun stored in Tekton Results. Provide a name for exact match or combine labelSelector/prefix to narrow results. Returns the full resource in YAML (default) or JSON format."),
+		mcp.WithDescription("Get a Tekton PipelineRun stored in Tekton Results. Provide a name for exact match or combine labelSelector/annotationSelector/prefix to narrow results. Returns the full resource in YAML (default) or JSON format."),
 		mcp.WithToolAnnotation(readOnlyAnnotations("Get PipelineRun")),
 		mcp.WithString("name",
-			mcp.Description("Exact PipelineRun name. Optional if labelSelector/prefix uniquely identify a run."),
+			mcp.Description("Exact PipelineRun name. Optional if labelSelector/annotationSelector/prefix uniquely identify a run."),
 			mcp.DefaultString(""),
 		),
 		mcp.WithString("namespace",
@@ -128,6 +136,10 @@ func newPipelineRunGetTool(deps Dependencies) server.ServerTool {
 		),
 		mcp.WithString("labelSelector",
 			mcp.Description("Comma separated key=value selectors that must match run labels."),
+			mcp.DefaultString(""),
+		),
+		mcp.WithString("annotationSelector",
+			mcp.Description("Comma separated key=value selectors that must match run annotations."),
 			mcp.DefaultString(""),
 		),
 		mcp.WithString("prefix",
@@ -149,8 +161,8 @@ func newPipelineRunGetTool(deps Dependencies) server.ServerTool {
 	)
 
 	handler := mcp.NewTypedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args getParams) (*mcp.CallToolResult, error) {
-		if args.Name == "" && args.Prefix == "" && args.UID == "" && strings.TrimSpace(args.LabelSelector) == "" {
-			return mcp.NewToolResultError("provide at least one of name, prefix, uid, or labelSelector to identify a PipelineRun"), nil
+		if args.Name == "" && args.Prefix == "" && args.UID == "" && strings.TrimSpace(args.LabelSelector) == "" && strings.TrimSpace(args.AnnotationSelector) == "" {
+			return mcp.NewToolResultError("provide at least one of name, prefix, uid, labelSelector, or annotationSelector to identify a PipelineRun"), nil
 		}
 
 		// Default selectLast to true if not explicitly provided
@@ -165,12 +177,13 @@ func newPipelineRunGetTool(deps Dependencies) server.ServerTool {
 
 		ns := normalizeNamespace(args.Namespace, namespaceDefault)
 		selector := tektonresults.RunSelector{
-			Namespace:     ns,
-			LabelSelector: args.LabelSelector,
-			Prefix:        args.Prefix,
-			Name:          args.Name,
-			UID:           args.UID,
-			SelectLast:    selectLast,
+			Namespace:          ns,
+			LabelSelector:      args.LabelSelector,
+			AnnotationSelector: args.AnnotationSelector,
+			Prefix:             args.Prefix,
+			Name:               args.Name,
+			UID:                args.UID,
+			SelectLast:         selectLast,
 		}
 
 		detail, err := deps.Service.GetPipelineRun(ctx, selector)
@@ -207,7 +220,7 @@ func newPipelineRunLogsTool(deps Dependencies) server.ServerTool {
 		mcp.WithDescription("Retrieve stored logs for a completed Tekton PipelineRun."),
 		mcp.WithToolAnnotation(readOnlyAnnotations("PipelineRun Logs")),
 		mcp.WithString("name",
-			mcp.Description("Exact PipelineRun name. Optional if labelSelector/prefix uniquely identify a run."),
+			mcp.Description("Exact PipelineRun name. Optional if labelSelector/annotationSelector/prefix uniquely identify a run."),
 			mcp.DefaultString(""),
 		),
 		mcp.WithString("namespace",
@@ -216,6 +229,10 @@ func newPipelineRunLogsTool(deps Dependencies) server.ServerTool {
 		),
 		mcp.WithString("labelSelector",
 			mcp.Description("Comma separated key=value selectors that must match run labels."),
+			mcp.DefaultString(""),
+		),
+		mcp.WithString("annotationSelector",
+			mcp.Description("Comma separated key=value selectors that must match run annotations."),
 			mcp.DefaultString(""),
 		),
 		mcp.WithString("prefix",
@@ -233,8 +250,8 @@ func newPipelineRunLogsTool(deps Dependencies) server.ServerTool {
 	)
 
 	handler := mcp.NewTypedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args logsParams) (*mcp.CallToolResult, error) {
-		if args.Name == "" && args.Prefix == "" && strings.TrimSpace(args.LabelSelector) == "" {
-			return mcp.NewToolResultError("provide at least one of name, prefix, uid, or labelSelector to target a PipelineRun"), nil
+		if args.Name == "" && args.Prefix == "" && strings.TrimSpace(args.LabelSelector) == "" && strings.TrimSpace(args.AnnotationSelector) == "" {
+			return mcp.NewToolResultError("provide at least one of name, prefix, uid, labelSelector, or annotationSelector to target a PipelineRun"), nil
 		}
 
 		// Default selectLast to true if not explicitly provided
@@ -249,12 +266,13 @@ func newPipelineRunLogsTool(deps Dependencies) server.ServerTool {
 
 		ns := normalizeNamespace(args.Namespace, namespaceDefault)
 		selector := tektonresults.RunSelector{
-			Namespace:     ns,
-			LabelSelector: args.LabelSelector,
-			Prefix:        args.Prefix,
-			Name:          args.Name,
-			UID:           args.UID,
-			SelectLast:    selectLast,
+			Namespace:          ns,
+			LabelSelector:      args.LabelSelector,
+			AnnotationSelector: args.AnnotationSelector,
+			Prefix:             args.Prefix,
+			Name:               args.Name,
+			UID:                args.UID,
+			SelectLast:         selectLast,
 		}
 
 		detail, err := deps.Service.GetPipelineRun(ctx, selector)

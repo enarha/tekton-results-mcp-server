@@ -28,7 +28,7 @@ func newTaskRunListTool(deps Dependencies) server.ServerTool {
 
 	tool := mcp.NewTool(
 		"taskrun_list",
-		mcp.WithDescription("List Tekton TaskRuns stored by the Tekton Results service with optional namespace, label, and name prefix filters."),
+		mcp.WithDescription("List Tekton TaskRuns stored by the Tekton Results service with optional namespace, label, annotation, and name prefix filters."),
 		mcp.WithToolAnnotation(readOnlyAnnotations("List TaskRuns")),
 		mcp.WithString("namespace",
 			mcp.Description("Kubernetes namespace to query. Use '-' to search across all namespaces."),
@@ -36,6 +36,10 @@ func newTaskRunListTool(deps Dependencies) server.ServerTool {
 		),
 		mcp.WithString("labelSelector",
 			mcp.Description("Comma separated key=value selectors that must match run labels."),
+			mcp.DefaultString(""),
+		),
+		mcp.WithString("annotationSelector",
+			mcp.Description("Comma separated key=value selectors that must match run annotations."),
 			mcp.DefaultString(""),
 		),
 		mcp.WithString("prefix",
@@ -53,10 +57,11 @@ func newTaskRunListTool(deps Dependencies) server.ServerTool {
 	handler := mcp.NewTypedToolHandler(func(ctx context.Context, _ mcp.CallToolRequest, args listParams) (*mcp.CallToolResult, error) {
 		ns := normalizeNamespace(args.Namespace, namespaceDefault)
 		opts := tektonresults.ListOptions{
-			Namespace:     ns,
-			LabelSelector: args.LabelSelector,
-			Prefix:        args.Prefix,
-			Limit:         sanitizeLimit(args.Limit),
+			Namespace:          ns,
+			LabelSelector:      args.LabelSelector,
+			AnnotationSelector: args.AnnotationSelector,
+			Prefix:             args.Prefix,
+			Limit:              sanitizeLimit(args.Limit),
 		}
 
 		summaries, err := deps.Service.ListTaskRuns(ctx, opts)
@@ -84,10 +89,10 @@ func newTaskRunGetTool(deps Dependencies) server.ServerTool {
 
 	tool := mcp.NewTool(
 		"taskrun_get",
-		mcp.WithDescription("Get a Tekton TaskRun stored in Tekton Results. Provide a name for exact match or combine labelSelector/prefix to narrow results. Returns the full resource in YAML (default) or JSON format."),
+		mcp.WithDescription("Get a Tekton TaskRun stored in Tekton Results. Provide a name for exact match or combine labelSelector/annotationSelector/prefix to narrow results. Returns the full resource in YAML (default) or JSON format."),
 		mcp.WithToolAnnotation(readOnlyAnnotations("Get TaskRun")),
 		mcp.WithString("name",
-			mcp.Description("Exact TaskRun name. Optional if labelSelector/prefix uniquely identify a run."),
+			mcp.Description("Exact TaskRun name. Optional if labelSelector/annotationSelector/prefix uniquely identify a run."),
 			mcp.DefaultString(""),
 		),
 		mcp.WithString("namespace",
@@ -96,6 +101,10 @@ func newTaskRunGetTool(deps Dependencies) server.ServerTool {
 		),
 		mcp.WithString("labelSelector",
 			mcp.Description("Comma separated key=value selectors that must match run labels."),
+			mcp.DefaultString(""),
+		),
+		mcp.WithString("annotationSelector",
+			mcp.Description("Comma separated key=value selectors that must match run annotations."),
 			mcp.DefaultString(""),
 		),
 		mcp.WithString("prefix",
@@ -117,8 +126,8 @@ func newTaskRunGetTool(deps Dependencies) server.ServerTool {
 	)
 
 	handler := mcp.NewTypedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args getParams) (*mcp.CallToolResult, error) {
-		if args.Name == "" && args.Prefix == "" && args.UID == "" && strings.TrimSpace(args.LabelSelector) == "" {
-			return mcp.NewToolResultError("provide at least one of name, prefix, uid, or labelSelector to identify a TaskRun"), nil
+		if args.Name == "" && args.Prefix == "" && args.UID == "" && strings.TrimSpace(args.LabelSelector) == "" && strings.TrimSpace(args.AnnotationSelector) == "" {
+			return mcp.NewToolResultError("provide at least one of name, prefix, uid, labelSelector, or annotationSelector to identify a TaskRun"), nil
 		}
 
 		// Default selectLast to true if not explicitly provided
@@ -133,12 +142,13 @@ func newTaskRunGetTool(deps Dependencies) server.ServerTool {
 
 		ns := normalizeNamespace(args.Namespace, namespaceDefault)
 		selector := tektonresults.RunSelector{
-			Namespace:     ns,
-			LabelSelector: args.LabelSelector,
-			Prefix:        args.Prefix,
-			Name:          args.Name,
-			UID:           args.UID,
-			SelectLast:    selectLast,
+			Namespace:          ns,
+			LabelSelector:      args.LabelSelector,
+			AnnotationSelector: args.AnnotationSelector,
+			Prefix:             args.Prefix,
+			Name:               args.Name,
+			UID:                args.UID,
+			SelectLast:         selectLast,
 		}
 
 		detail, err := deps.Service.GetTaskRun(ctx, selector)
@@ -175,7 +185,7 @@ func newTaskRunLogsTool(deps Dependencies) server.ServerTool {
 		mcp.WithDescription("Retrieve stored logs for a completed Tekton TaskRun."),
 		mcp.WithToolAnnotation(readOnlyAnnotations("TaskRun Logs")),
 		mcp.WithString("name",
-			mcp.Description("Exact TaskRun name. Optional if labelSelector/prefix uniquely identify a run."),
+			mcp.Description("Exact TaskRun name. Optional if labelSelector/annotationSelector/prefix uniquely identify a run."),
 			mcp.DefaultString(""),
 		),
 		mcp.WithString("namespace",
@@ -184,6 +194,10 @@ func newTaskRunLogsTool(deps Dependencies) server.ServerTool {
 		),
 		mcp.WithString("labelSelector",
 			mcp.Description("Comma separated key=value selectors that must match run labels."),
+			mcp.DefaultString(""),
+		),
+		mcp.WithString("annotationSelector",
+			mcp.Description("Comma separated key=value selectors that must match run annotations."),
 			mcp.DefaultString(""),
 		),
 		mcp.WithString("prefix",
@@ -201,8 +215,8 @@ func newTaskRunLogsTool(deps Dependencies) server.ServerTool {
 	)
 
 	handler := mcp.NewTypedToolHandler(func(ctx context.Context, req mcp.CallToolRequest, args logsParams) (*mcp.CallToolResult, error) {
-		if args.Name == "" && args.Prefix == "" && strings.TrimSpace(args.LabelSelector) == "" {
-			return mcp.NewToolResultError("provide at least one of name, prefix, uid, or labelSelector to target a TaskRun"), nil
+		if args.Name == "" && args.Prefix == "" && strings.TrimSpace(args.LabelSelector) == "" && strings.TrimSpace(args.AnnotationSelector) == "" {
+			return mcp.NewToolResultError("provide at least one of name, prefix, uid, labelSelector, or annotationSelector to target a TaskRun"), nil
 		}
 
 		// Default selectLast to true if not explicitly provided
@@ -217,12 +231,13 @@ func newTaskRunLogsTool(deps Dependencies) server.ServerTool {
 
 		ns := normalizeNamespace(args.Namespace, namespaceDefault)
 		selector := tektonresults.RunSelector{
-			Namespace:     ns,
-			LabelSelector: args.LabelSelector,
-			Prefix:        args.Prefix,
-			Name:          args.Name,
-			UID:           args.UID,
-			SelectLast:    selectLast,
+			Namespace:          ns,
+			LabelSelector:      args.LabelSelector,
+			AnnotationSelector: args.AnnotationSelector,
+			Prefix:             args.Prefix,
+			Name:               args.Name,
+			UID:                args.UID,
+			SelectLast:         selectLast,
 		}
 
 		detail, err := deps.Service.GetTaskRun(ctx, selector)
