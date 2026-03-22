@@ -6,10 +6,10 @@ on:
 
 jobs:
   pr_agent_job:
-    # Only run if it's a Pull Request comment starting with /ai-review
+    # Only run if it's a Pull Request comment starting with /review
     if: |
       github.event.issue.pull_request &&
-      startsWith(github.event.comment.body, '/ai-review')
+      startsWith(github.event.comment.body, '/review')
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -44,9 +44,6 @@ jobs:
 
           # GitHub Context
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-          # Command to execute
-          PR_AGENT_COMMAND: "/review"
 
           # Optional: Custom behavior
           pr_reviews.inline_code_comments: "true"
