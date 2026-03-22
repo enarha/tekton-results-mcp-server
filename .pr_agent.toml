@@ -1,4 +1,5 @@
 [pr_reviewer]
+# Enable thorough review
 require_focused_review = true
 require_score_review = false
 require_tests_review = true
@@ -8,9 +9,6 @@ require_estimate_effort_to_review = false
 
 # Increase from default of 3
 num_max_findings = 10
-
-# Enable inline code comments in the review
-inline_code_comments = true
 
 extra_instructions = """
 Focus on correctness, bugs, and regression risk. 
@@ -47,4 +45,10 @@ publish_labels = false
 add_original_user_description = true
 
 [pr_code_suggestions]
+# Enables inline code comments pointing to specific bugs
 num_code_suggestions = 6
+
+[pr_code_suggestions]
+num_code_suggestions = 6
+# Try auto mode which should post suggestions inline
+suggestions_mode = "auto"
