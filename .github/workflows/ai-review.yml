@@ -40,6 +40,8 @@ jobs:
         env:
           # Configuration for Gemini
           config.model: "gemini/gemini-1.5-flash-latest"
+          # PR-Agent doesn't have gemini-1.5-flash-latest in its built-in model registry, we set max tokens explicitly
+          config.custom_model_max_tokens: "1048576"
           google_ai_studio.gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
 
           # GitHub Context
