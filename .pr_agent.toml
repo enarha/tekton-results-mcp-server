@@ -1,5 +1,4 @@
 [pr_reviewer]
-# Enable thorough review
 require_focused_review = true
 require_score_review = false
 require_tests_review = true
@@ -9,6 +8,12 @@ require_estimate_effort_to_review = false
 
 # Increase from default of 3
 num_max_findings = 10
+
+# Enable inline code comments in the review
+inline_code_comments = true
+
+# Disable persistent comment to force review comments on specific lines
+persistent_comment = false
 
 extra_instructions = """
 Focus on correctness, bugs, and regression risk. 
@@ -23,8 +28,7 @@ CRITICAL - Check for these common Go bugs:
 7. Race conditions and concurrent access to shared data
 
 For this codebase specifically:
-- CEL filter expressions: verify syntax (==, not =), proper escaping, existence checks
-- Map access: always check if key exists or if map is nil before accessing
+- CEL filter expressions
 - API changes: check backward compatibility
 - Error paths: verify all error cases are handled
 
@@ -45,10 +49,4 @@ publish_labels = false
 add_original_user_description = true
 
 [pr_code_suggestions]
-# Enables inline code comments pointing to specific bugs
 num_code_suggestions = 6
-
-[pr_code_suggestions]
-num_code_suggestions = 6
-# Try auto mode which should post suggestions inline
-suggestions_mode = "auto"
