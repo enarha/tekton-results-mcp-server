@@ -33,12 +33,12 @@ jobs:
             echo "User $COMMENT_USER has $PERMISSION permission - skipping review"
           fi
 
-      # Step 2: Trigger PR-Agent with Gemini 3.1 Pro
+      # Step 2: Trigger PR-Agent
       - name: PR Agent Action
         if: steps.check.outputs.permitted == 'true'
         uses: Codium-ai/pr-agent@main
         env:
-          config.model: "gemini/gemini-3.1-pro-preview"
+          config.model: "gemini/gemini-3.1-flash-lite-preview"
           google_ai_studio.gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           pr_reviewer.inline_code_comments: "true"
