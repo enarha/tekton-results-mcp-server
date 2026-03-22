@@ -89,20 +89,22 @@ func (s *Service) FetchLogs(ctx context.Context, recordName string) (string, err
 }
 
 type ListOptions struct {
-	Namespace     string
-	LabelSelector string
-	Prefix        string
-	Limit         int
+	Namespace          string
+	LabelSelector      string
+	AnnotationSelector string
+	Prefix             string
+	Limit              int
 }
 
 // RunSelector specifies filters for finding a single PipelineRun or TaskRun.
 type RunSelector struct {
-	Namespace     string // Kubernetes namespace; use "-" for all namespaces
-	LabelSelector string // Comma-separated key=value label filters
-	Prefix        string // Name prefix filter
-	Name          string // Exact name match (not unique in Results history)
-	UID           string // Exact UID match (unique identifier in Tekton Results database)
-	SelectLast    bool   // If true, automatically select the most recent match when multiple runs match the filters.
+	Namespace          string // Kubernetes namespace; use "-" for all namespaces
+	LabelSelector      string // Comma-separated key=value label filters
+	AnnotationSelector string // Comma-separated key=value annotation filters
+	Prefix             string // Name prefix filter
+	Name               string // Exact name match (not unique in Results history)
+	UID                string // Exact UID match (unique identifier in Tekton Results database)
+	SelectLast         bool   // If true, automatically select the most recent match when multiple runs match the filters.
 	// Defaults to true. When false, returns an error if multiple matches are found.
 	// Useful because run names are not unique in Tekton Results history.
 }
@@ -112,6 +114,7 @@ type RunSummary struct {
 	Namespace      string            `json:"namespace"`
 	UID            string            `json:"uid,omitempty"`
 	Labels         map[string]string `json:"labels,omitempty"`
+	Annotations    map[string]string `json:"annotations,omitempty"`
 	StartTime      *metav1.Time      `json:"startTime,omitempty"`
 	CompletionTime *metav1.Time      `json:"completionTime,omitempty"`
 	Status         string            `json:"status,omitempty"`
@@ -150,10 +153,11 @@ func (d RunDetail) Format(output string) (string, error) {
 
 type tektonRun struct {
 	Metadata struct {
-		Name      string            `json:"name"`
-		Namespace string            `json:"namespace"`
-		UID       string            `json:"uid"`
-		Labels    map[string]string `json:"labels"`
+		Name        string            `json:"name"`
+		Namespace   string            `json:"namespace"`
+		UID         string            `json:"uid"`
+		Labels      map[string]string `json:"labels"`
+		Annotations map[string]string `json:"annotations"`
 	} `json:"metadata"`
 	Status struct {
 		StartTime      *metav1.Time `json:"startTime"`
@@ -173,7 +177,12 @@ func (s *Service) listRuns(ctx context.Context, kind resourceKind, opts ListOpti
 		return nil, err
 	}
 
-	filter := buildFilterExpression(kind, labelFilters, "", "")
+	annotationFilters, err := parseAnnotationSelector(opts.AnnotationSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	filter := buildFilterExpression(kind, labelFilters, annotationFilters, "", "")
 	parent := parentForNamespace(opts.Namespace)
 
 	limit := opts.Limit
@@ -207,6 +216,9 @@ func (s *Service) listRuns(ctx context.Context, kind resourceKind, opts ListOpti
 			if !matchesLabels(run.Metadata.Labels, labelFilters) {
 				continue
 			}
+			if !matchesAnnotations(run.Metadata.Annotations, annotationFilters) {
+				continue
+			}
 			if opts.Prefix != "" && !strings.HasPrefix(run.Metadata.Name, opts.Prefix) {
 				continue
 			}
@@ -233,6 +245,11 @@ func (s *Service) listRuns(ctx context.Context, kind resourceKind, opts ListOpti
 
 func (s *Service) getRun(ctx context.Context, kind resourceKind, selector RunSelector) (*RunDetail, error) {
 	labelFilters, err := parseLabelSelector(selector.LabelSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	annotationFilters, err := parseAnnotationSelector(selector.AnnotationSelector)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +292,7 @@ func (s *Service) getRun(ctx context.Context, kind resourceKind, selector RunSel
 
 	// Non-UID query path: use standard filtering
 	resultParent := parentForNamespace(selector.Namespace)
-	filter := buildFilterExpression(kind, labelFilters, selector.Name, "")
+	filter := buildFilterExpression(kind, labelFilters, annotationFilters, selector.Name, "")
 	req := listRecordsRequest{
 		Parent:   resultParent,
 		Filter:   filter,
@@ -289,6 +306,11 @@ func (s *Service) getRun(ctx context.Context, kind resourceKind, selector RunSel
 // queryRecords handles the common logic for querying and filtering records
 func (s *Service) queryRecords(ctx context.Context, req listRecordsRequest, selector RunSelector) (*RunDetail, error) {
 	labelFilters, err := parseLabelSelector(selector.LabelSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	annotationFilters, err := parseAnnotationSelector(selector.AnnotationSelector)
 	if err != nil {
 		return nil, err
 	}
@@ -312,6 +334,9 @@ func (s *Service) queryRecords(ctx context.Context, req listRecordsRequest, sele
 				}
 			}
 			if !matchesLabels(run.Metadata.Labels, labelFilters) {
+				continue
+			}
+			if !matchesAnnotations(run.Metadata.Annotations, annotationFilters) {
 				continue
 			}
 			if selector.Prefix != "" && !strings.HasPrefix(run.Metadata.Name, selector.Prefix) {
@@ -379,6 +404,7 @@ func summarizeRun(run tektonRun, rec record) RunSummary {
 		Namespace:      run.Metadata.Namespace,
 		UID:            chooseString(run.Metadata.UID, rec.Uid),
 		Labels:         run.Metadata.Labels,
+		Annotations:    run.Metadata.Annotations,
 		StartTime:      run.Status.StartTime,
 		CompletionTime: run.Status.CompletionTime,
 		Status:         status,

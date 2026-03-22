@@ -5,6 +5,31 @@ import (
 	"strings"
 )
 
+func parseAnnotationSelector(selector string) (map[string]string, error) {
+	result := make(map[string]string)
+	if strings.TrimSpace(selector) == "" {
+		return result, nil
+	}
+	pairs := strings.Split(selector, ",")
+	for _, pair := range pairs {
+		pair = strings.TrimSpace(pair)
+		if pair == "" {
+			continue
+		}
+		parts := strings.SplitN(pair, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid annotation selector %q: expected key=value pairs", pair)
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		if key == "" || value == "" {
+			return nil, fmt.Errorf("invalid annotation selector %q: empty key or value", pair)
+		}
+		result[key] = value
+	}
+	return result, nil
+}
+
 func parseLabelSelector(selector string) (map[string]string, error) {
 	result := make(map[string]string)
 	if strings.TrimSpace(selector) == "" {
@@ -30,6 +55,21 @@ func parseLabelSelector(selector string) (map[string]string, error) {
 	return result, nil
 }
 
+func matchesAnnotations(actual map[string]string, expected map[string]string) bool {
+	if len(expected) == 0 {
+		return true
+	}
+	for key, want := range expected {
+		if actual == nil {
+			return false
+		}
+		if actual[key] != want {
+			return false
+		}
+	}
+	return true
+}
+
 func matchesLabels(actual map[string]string, expected map[string]string) bool {
 	if len(expected) == 0 {
 		return true
@@ -45,7 +85,7 @@ func matchesLabels(actual map[string]string, expected map[string]string) bool {
 	return true
 }
 
-func buildFilterExpression(kind resourceKind, labels map[string]string, exactName string, uid string) string {
+func buildFilterExpression(kind resourceKind, labels map[string]string, annotations map[string]string, exactName string, uid string) string {
 	var parts []string
 	if types, ok := resourceTypeFilters[kind]; ok && len(types) > 0 {
 		var clauses []string
@@ -60,6 +100,11 @@ func buildFilterExpression(kind resourceKind, labels map[string]string, exactNam
 	for key, value := range labels {
 		parts = append(parts, fmt.Sprintf(`data.metadata.labels["%s"]=="%s"`, escapeCELString(key), escapeCELString(value)))
 	}
+
+	for key, value := range annotations {
+		parts = append(parts, fmt.Sprintf(`data.metadata.annotations["%s"]="%s"`, key, escapeCELString(value)))
+	}
+
 	if exactName != "" {
 		parts = append(parts, fmt.Sprintf(`data.metadata.name=="%s"`, escapeCELString(exactName)))
 	}
