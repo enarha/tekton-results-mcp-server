@@ -1,70 +1,49 @@
 [pr_reviewer]
-# Focus on essential issues only - no style nitpicking
+# Enable thorough review
 require_focused_review = true
 require_score_review = false
 require_tests_review = true
 require_security_review = true
-
-# Avoid linter-style feedback
 require_can_be_split_review = false
 require_estimate_effort_to_review = false
 
+# Increase from default of 3
+num_max_findings = 10
+
 extra_instructions = """
-Focus on correctness, regression risk, and operational safety. Do not comment on:
-- Code style, formatting, or naming conventions
-- Issues that would be caught by linters or CI checks
-- Minor optimizations or refactoring suggestions
+Focus on correctness, bugs, and regression risk. 
 
-DO focus on:
+CRITICAL - Check for these common Go bugs:
+1. Syntax errors in string construction (e.g., CEL expressions, SQL, filters)
+2. Missing input validation and sanitization (especially for user-provided strings)
+3. Nil pointer dereferences (check map access, interface assertions)
+4. Off-by-one errors in loops and array access
+5. Missing error checks or improper error handling
+6. String escaping issues when building expressions
+7. Race conditions and concurrent access to shared data
 
-## Controller & Reconciliation Logic
-- Idempotency: Can the reconcile function be called multiple times safely?
-- Eventual consistency: Does the code handle stale cache reads correctly?
-- Status vs Spec separation: Are status updates independent of spec changes?
-- Reconcile completeness: Are all spec changes actually reconciled?
-- Error handling: Do transient errors trigger requeue vs permanent errors?
+For this codebase specifically:
+- CEL filter expressions: verify syntax (==, not =), proper escaping, existence checks
+- Map access: always check if key exists or if map is nil before accessing
+- API changes: check backward compatibility
+- Error paths: verify all error cases are handled
 
-## Kubernetes Resource Lifecycle
-- Finalizers: Are finalizers added before external resources are created?
-- Deletion handling: Is cleanup idempotent and safe if partially completed?
-- Patch vs Update: Are there conflict/race conditions in resource updates?
-- Owner references: Are dependent resources properly garbage collected?
-- Resource leaks: Are external resources cleaned up on deletion?
+Also review for:
+- Controller reconciliation logic (idempotency, eventual consistency)
+- Kubernetes resource lifecycle (finalizers, deletion, updates)
+- Security issues (RBAC, privilege escalation, credential handling)
+- Test coverage for error paths and edge cases
 
-## Concurrency & Safety
-- Stale read assumptions: Could a cached read be stale and cause incorrect decisions?
-- Update conflicts: Could concurrent reconciles corrupt resource state?
-- Reentrancy: Is it safe if reconcile is called again before completion?
-- Lock-free assumptions: Are there hidden ordering dependencies?
-
-## API & Behavior Changes
-- Breaking changes to CRD schemas or API behavior
-- Status condition semantics changes
-- Webhook validation/defaulting impact
-- Backward compatibility with existing resources
-
-## Testing & Observability
-- Missing test coverage for error paths, deletion, or edge cases
-- Lack of observability for debugging in production (logs, metrics, events)
-- Test flakiness due to timing, caching, or concurrency
-
-## Security
-- RBAC requirements for new operations
-- Privilege escalation risks
-- Credential handling in reconcile loops
-- Namespace boundary violations
-
-When reviewing Go code, pay attention to:
-- Nil pointer dereferences in Kubernetes API objects
-- Context cancellation handling in reconcile loops
-- Defer statements that may not execute on early returns
+Do NOT comment on:
+- Code style, formatting, or naming (unless it causes bugs)
+- Issues that linters would catch
+- Minor optimizations that don't affect correctness
 """
 
 [pr_description]
-# Don't auto-label PRs
 publish_labels = false
 add_original_user_description = true
 
 [pr_code_suggestions]
-# Disable auto-suggestions to avoid nitpicking
-num_code_suggestions = 0
+# Enables inline code comments pointing to specific bugs
+num_code_suggestions = 6
