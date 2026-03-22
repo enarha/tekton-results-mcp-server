@@ -45,6 +45,6 @@ jobs:
           # GitHub Context
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          # Optional: Custom behavior
-          pr_reviews.inline_code_comments: "true"
+          # Enable inline code comments
+          pr_reviewer.inline_code_comments: "true"
           pr_description.publish_labels: "false"
