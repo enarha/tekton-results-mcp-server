@@ -10,7 +10,7 @@ github.com/davecgh/go-spew/spew
 # github.com/fxamacker/cbor/v2 v2.7.0
 ## explicit; go 1.17
 github.com/fxamacker/cbor/v2
-# github.com/go-logr/logr v1.4.2
+# github.com/go-logr/logr v1.4.3
 ## explicit; go 1.18
 github.com/go-logr/logr
 # github.com/gogo/protobuf v1.3.2
@@ -98,7 +98,7 @@ gopkg.in/inf.v0
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
-# k8s.io/apimachinery v0.33.10
+# k8s.io/apimachinery v0.33.11
 ## explicit; go 1.24.0
 k8s.io/apimachinery/pkg/api/errors
 k8s.io/apimachinery/pkg/api/meta
@@ -139,7 +139,7 @@ k8s.io/apimachinery/pkg/util/yaml
 k8s.io/apimachinery/pkg/version
 k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/client-go v0.33.10
+# k8s.io/client-go v0.33.11
 ## explicit; go 1.24.0
 k8s.io/client-go/features
 k8s.io/client-go/pkg/apis/clientauthentication
